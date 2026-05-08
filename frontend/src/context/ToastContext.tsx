@@ -1,11 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
+import { toast } from 'sonner'
 
 type ToastCtx = {
   showToast: (message: string) => void
@@ -14,11 +8,8 @@ type ToastCtx = {
 const ToastContext = createContext<ToastCtx | null>(null)
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [message, setMessage] = useState<string | null>(null)
-
-  const showToast = useCallback((msg: string) => {
-    setMessage(msg)
-    window.setTimeout(() => setMessage(null), 4000)
+  const showToast = useCallback((message: string) => {
+    toast(message)
   }, [])
 
   const value = useMemo(() => ({ showToast }), [showToast])
@@ -26,11 +17,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {message ? (
-        <div className="toast-snackbar" role="status">
-          {message}
-        </div>
-      ) : null}
     </ToastContext.Provider>
   )
 }

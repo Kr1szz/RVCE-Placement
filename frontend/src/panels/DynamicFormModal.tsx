@@ -2,6 +2,25 @@ import { useMemo, useState } from 'react'
 import type { PlacementFormDetail } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function DynamicFormModal({
   detail,
@@ -19,13 +38,7 @@ export function DynamicFormModal({
   const initial = useMemo(() => {
     const m: Record<number, string> = {}
     for (const q of detail.questions) {
-      if (q.fieldType === 'text' || q.fieldType === 'number') {
-        m[q.id] = q.answer ?? ''
-      } else if (q.fieldType === 'boolean') {
-        m[q.id] = q.answer ?? ''
-      } else {
-        m[q.id] = q.answer ?? ''
-      }
+      m[q.id] = q.answer ?? ''
     }
     return m
   }, [detail.questions])
@@ -58,6 +71,7 @@ export function DynamicFormModal({
     setSaving(true)
     try {
       await repo.submitFormResponses(detail.summary.id, answers)
+      showToast('Responses submitted successfully.')
       onSubmitted()
       onClose()
     } catch (e) {
@@ -68,79 +82,75 @@ export function DynamicFormModal({
   }
 
   return (
-    <div className="plc-modal-backdrop" role="presentation" onClick={onClose}>
-      <div
-        className="plc-modal-sheet"
-        role="dialog"
-        aria-labelledby="form-modal-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="form-modal-title" style={{ margin: '0 0 6px' }}>
-          {detail.summary.title}
-        </h2>
-        <p style={{ margin: '0 0 24px', opacity: 0.8 }}>
-          {detail.summary.type.toUpperCase()} •{' '}
-          {detail.summary.companyName ?? 'Global'}
-        </p>
-
-        {detail.questions.map((q) => (
-          <div key={q.id} style={{ marginBottom: 18 }}>
-            <div style={{ fontWeight: 600, marginBottom: 10 }}>
-              {q.questionText}
-              {q.isRequired ? ' *' : ''}
-            </div>
-            {q.fieldType === 'text' || q.fieldType === 'number' ? (
-              <input
-                className="plc-input"
-                style={{ marginTop: 0, background: '#fff' }}
-                type={q.fieldType === 'number' ? 'number' : 'text'}
-                value={values[q.id] ?? ''}
-                onChange={(e) => setVal(q.id, e.target.value)}
-              />
-            ) : q.fieldType === 'boolean' ? (
-              <select
-                className="plc-input"
-                style={{ marginTop: 0, background: '#fff' }}
-                value={values[q.id] ?? ''}
-                onChange={(e) => setVal(q.id, e.target.value)}
-              >
-                <option value="">Select…</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            ) : (
-              <select
-                className="plc-input"
-                style={{ marginTop: 0, background: '#fff' }}
-                value={values[q.id] ?? ''}
-                onChange={(e) => setVal(q.id, e.target.value)}
-              >
-                <option value="">Select…</option>
-                {q.options.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            )}
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-2">
+          <DialogTitle className="text-2xl">{detail.summary.title}</DialogTitle>
+          <DialogDescription className="uppercase tracking-widest font-bold text-[10px] text-primary">
+            {detail.summary.type} • {detail.summary.companyName ?? 'Global Form'}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <ScrollArea className="flex-1 px-6 py-4">
+          <div className="space-y-6 pb-6">
+            {detail.questions.map((q) => (
+              <div key={q.id} className="space-y-3">
+                <Label className="text-sm font-semibold flex items-center gap-1">
+                  {q.questionText}
+                  {q.isRequired && <span className="text-destructive">*</span>}
+                </Label>
+                
+                {q.fieldType === 'text' || q.fieldType === 'number' ? (
+                  <Input
+                    type={q.fieldType === 'number' ? 'number' : 'text'}
+                    value={values[q.id] ?? ''}
+                    onChange={(e) => setVal(q.id, e.target.value)}
+                    placeholder={`Enter ${q.questionText.toLowerCase()}...`}
+                  />
+                ) : q.fieldType === 'boolean' ? (
+                  <Select
+                    value={values[q.id]}
+                    onValueChange={(v) => setVal(q.id, v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Yes</SelectItem>
+                      <SelectItem value="false">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select
+                    value={values[q.id]}
+                    onValueChange={(v) => setVal(q.id, v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose one..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {q.options.map((o) => (
+                        <SelectItem key={o} value={o}>
+                          {o}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
+        </ScrollArea>
 
-        <div className="plc-modal-actions">
-          <button type="button" className="plc-btn-outline" onClick={onClose}>
+        <DialogFooter className="p-6 bg-slate-50 dark:bg-slate-900 border-t">
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className="plc-btn plc-btn-primary"
-            style={{ width: 'auto', margin: 0 }}
-            disabled={saving}
-            onClick={() => void submit()}
-          >
-            Submit responses
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+          <Button onClick={() => void submit()} disabled={saving}>
+            {saving ? 'Submitting...' : 'Submit Responses'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

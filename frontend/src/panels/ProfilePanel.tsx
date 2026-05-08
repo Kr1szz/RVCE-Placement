@@ -2,7 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import type { AppUser } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { ErrorState, FieldBox, SectionCard } from '../placement/components'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { CheckCircle2, AlertCircle, Upload, Save, FileText } from 'lucide-react'
 
 export function ProfilePanel() {
   const { repo } = useAuth()
@@ -104,198 +110,151 @@ export function ProfilePanel() {
 
   if (loading) {
     return (
-      <div className="plc-empty">
-        <div className="plc-splash-spinner" />
+      <div className="space-y-6">
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-[600px] w-full" />
       </div>
     )
   }
 
   if (err || !user) {
-    return <ErrorState message={err ?? 'Failed to load profile.'} onRetry={load} />
+    return (
+      <Card className="border-destructive/20 bg-destructive/5">
+        <CardContent className="pt-6 text-center">
+          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Failed to load profile</h3>
+          <p className="text-sm text-slate-500 mb-4">{err ?? 'An unknown error occurred.'}</p>
+          <Button onClick={load}>Retry</Button>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
-    <div>
-      <SectionCard
-        title="Profile Status"
-        subtitle={
-          user.verified
-            ? 'Your profile has been verified by SPC and is now read-only.'
-            : 'Complete the profile once and upload your latest resume before verification.'
-        }
-        action={
-          <div className="plc-row-actions">
-            <span className="plc-chip">
-              {user.verified ? '✓ Verified' : '⏳ Awaiting verification'}
-            </span>
-            <button
-              type="button"
-              className="plc-btn-outline"
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Verification & Resume Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2">
+                Verification Status
+                {user.verified ? (
+                  <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                    <CheckCircle2 className="w-3 h-3 mr-1" /> Verified
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
+                    Awaiting Verification
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {user.verified
+                  ? 'Your profile is locked and verified by SPC.'
+                  : 'Complete your profile and upload a resume to get verified.'}
+              </CardDescription>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={uploadResume} 
               disabled={readOnly}
-              onClick={uploadResume}
+              className="gap-2"
             >
-              {user.resumeUrl == null ? 'Upload Resume' : 'Replace Resume'}
-            </button>
+              <Upload className="w-4 h-4" />
+              {user.resumeUrl ? 'Update Resume' : 'Upload Resume'}
+            </Button>
           </div>
-        }
-      >
-        {user.resumeUrl != null ? (
-          <p style={{ margin: 0 }}>Resume: {user.resumeUrl}</p>
-        ) : null}
-      </SectionCard>
+        </CardHeader>
+        {user.resumeUrl && (
+          <CardContent>
+            <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800">
+              <div className="p-2 bg-white dark:bg-slate-900 rounded border shadow-sm">
+                <FileText className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Current Resume</p>
+                <a 
+                  href={user.resumeUrl} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="text-sm font-medium text-primary hover:underline truncate block"
+                >
+                  {user.resumeUrl.split('/').pop()}
+                </a>
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
-      <SectionCard
-        title="Academic Profile"
-        subtitle="This data powers eligibility checks and company exports."
-        footer={
-          <div style={{ textAlign: 'right' }}>
-            <button
-              type="button"
-              className="plc-btn plc-btn-primary"
-              style={{ width: 'auto', margin: 0 }}
-              disabled={readOnly}
-              onClick={() => void save()}
-            >
-              Save profile
-            </button>
+      {/* Main Profile Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Academic & Personal Details</CardTitle>
+          <CardDescription>
+            Ensure all information matches your college records exactly.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="pf-name">Full Name</Label>
+              <Input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-usn">USN</Label>
+              <Input id="pf-usn" value={usn} onChange={(e) => setUsn(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-ce">College Email</Label>
+              <Input id="pf-ce" type="email" value={collegeEmail} onChange={(e) => setCollegeEmail(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-pe">Personal Email</Label>
+              <Input id="pf-pe" type="email" value={personalEmail} onChange={(e) => setPersonalEmail(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-phone">Phone Number</Label>
+              <Input id="pf-phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-aadhar">Aadhar Number</Label>
+              <Input id="pf-aadhar" value={aadhar} onChange={(e) => setAadhar(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-li">LinkedIn Profile URL</Label>
+              <Input id="pf-li" value={linkedIn} onChange={(e) => setLinkedIn(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-gh">GitHub Profile URL</Label>
+              <Input id="pf-gh" value={gitHub} onChange={(e) => setGitHub(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-cgpa">UG CGPA</Label>
+              <Input id="pf-cgpa" type="number" step="0.01" value={cgpa} onChange={(e) => setCgpa(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-fs">1st Sem SGPA</Label>
+              <Input id="pf-fs" type="number" step="0.01" value={firstSem} onChange={(e) => setFirstSem(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-10">10th Aggregate (%)</Label>
+              <Input id="pf-10" type="number" step="0.1" value={tenth} onChange={(e) => setTenth(e.target.value)} disabled={readOnly} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-12">12th Aggregate (%)</Label>
+              <Input id="pf-12" type="number" step="0.1" value={twelfth} onChange={(e) => setTwelfth(e.target.value)} disabled={readOnly} />
+            </div>
           </div>
-        }
-      >
-        <div className="plc-form-grid">
-          <FieldBox width={260}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-name">Name</label>
-              <input
-                id="pf-name"
-                value={name}
-                disabled={readOnly}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={220}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-usn">USN</label>
-              <input
-                id="pf-usn"
-                value={usn}
-                disabled={readOnly}
-                onChange={(e) => setUsn(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={280}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-ce">College email</label>
-              <input
-                id="pf-ce"
-                value={collegeEmail}
-                disabled={readOnly}
-                onChange={(e) => setCollegeEmail(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={280}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-pe">Personal email</label>
-              <input
-                id="pf-pe"
-                value={personalEmail}
-                disabled={readOnly}
-                onChange={(e) => setPersonalEmail(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={220}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-phone">Phone number</label>
-              <input
-                id="pf-phone"
-                value={phone}
-                disabled={readOnly}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={220}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-aadhar">Aadhar</label>
-              <input
-                id="pf-aadhar"
-                value={aadhar}
-                disabled={readOnly}
-                onChange={(e) => setAadhar(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={280}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-li">LinkedIn URL</label>
-              <input
-                id="pf-li"
-                value={linkedIn}
-                disabled={readOnly}
-                onChange={(e) => setLinkedIn(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={280}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-gh">GitHub URL</label>
-              <input
-                id="pf-gh"
-                value={gitHub}
-                disabled={readOnly}
-                onChange={(e) => setGitHub(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-cgpa">UG CGPA</label>
-              <input
-                id="pf-cgpa"
-                value={cgpa}
-                disabled={readOnly}
-                onChange={(e) => setCgpa(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-fs">1st sem SGPA</label>
-              <input
-                id="pf-fs"
-                value={firstSem}
-                disabled={readOnly}
-                onChange={(e) => setFirstSem(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-10">10th marks</label>
-              <input
-                id="pf-10"
-                value={tenth}
-                disabled={readOnly}
-                onChange={(e) => setTenth(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-12">12th marks</label>
-              <input
-                id="pf-12"
-                value={twelfth}
-                disabled={readOnly}
-                onChange={(e) => setTwelfth(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-        </div>
-      </SectionCard>
+        </CardContent>
+        <CardFooter className="justify-end border-t p-6 bg-slate-50/50 dark:bg-slate-900/50">
+          <Button onClick={save} disabled={readOnly} className="gap-2">
+            <Save className="w-4 h-4" />
+            {saving ? 'Saving...' : 'Save Profile'}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   )
 }
