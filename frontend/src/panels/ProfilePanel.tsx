@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
-import { CheckCircle2, AlertCircle, Upload, Save, FileText } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Upload, Save, FileText, Clock } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export function ProfilePanel() {
   const { repo } = useAuth()
@@ -63,7 +63,7 @@ export function ProfilePanel() {
 
   const readOnly = Boolean(user?.verified) || saving
 
-  const save = async () => {
+  const saveProfile = async () => {
     if (!user) return
     setSaving(true)
     try {
@@ -108,48 +108,66 @@ export function ProfilePanel() {
     input.click()
   }
 
+  const FormField = ({ label, value, onChange, id, type = 'text', disabled = false }: {
+    label: string
+    value: string
+    onChange: (v: string) => void
+    id: string
+    type?: string
+    disabled?: boolean
+  }) => (
+    <div className="space-y-2">
+      <Label htmlFor={id} className="text-sm font-medium text-text-muted">{label}</Label>
+      <Input
+        id={id}
+        type={type}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-white/5 border-white/10 text-white focus:ring-primary/50"
+      />
+    </div>
+  )
+
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-[600px] w-full" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     )
   }
 
   if (err || !user) {
     return (
-      <Card className="border-destructive/20 bg-destructive/5">
-        <CardContent className="pt-6 text-center">
-          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Failed to load profile</h3>
-          <p className="text-sm text-slate-500 mb-4">{err ?? 'An unknown error occurred.'}</p>
-          <Button onClick={load}>Retry</Button>
-        </CardContent>
+      <Card className="glass-panel border-destructive/20 text-center p-12 max-w-2xl mx-auto">
+        <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+        <h3 className="text-xl font-bold mb-2 text-white">Failed to load profile</h3>
+        <p className="text-text-muted mb-6">{err ?? 'An unknown error occurred.'}</p>
+        <Button onClick={load}>Retry</Button>
       </Card>
     )
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 lg:pb-8">
       {/* Verification & Resume Section */}
-      <Card>
+      <Card className="glass-panel border-white/10">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-white">
                 Verification Status
                 {user.verified ? (
-                  <Badge variant="default" className="bg-green-500 hover:bg-green-600">
-                    <CheckCircle2 className="w-3 h-3 mr-1" /> Verified
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/20 gap-1.5 hover:bg-green-500/30">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Verified
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
-                    Awaiting Verification
+                  <Badge variant="outline" className="text-amber-400 border-amber-400/20 bg-amber-400/10 gap-1.5">
+                    <Clock className="w-3.5 h-3.5" /> Awaiting Verification
                   </Badge>
                 )}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-text-muted">
                 {user.verified
                   ? 'Your profile is locked and verified by SPC.'
                   : 'Complete your profile and upload a resume to get verified.'}
@@ -159,7 +177,7 @@ export function ProfilePanel() {
               variant="outline" 
               onClick={uploadResume} 
               disabled={readOnly}
-              className="gap-2"
+              className="gap-2 border-white/10 text-white hover:bg-white/5"
             >
               <Upload className="w-4 h-4" />
               {user.resumeUrl ? 'Update Resume' : 'Upload Resume'}
@@ -168,12 +186,12 @@ export function ProfilePanel() {
         </CardHeader>
         {user.resumeUrl && (
           <CardContent>
-            <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800">
-              <div className="p-2 bg-white dark:bg-slate-900 rounded border shadow-sm">
+            <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+              <div className="p-2 bg-white/10 rounded-lg border border-white/10 shadow-sm">
                 <FileText className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Current Resume</p>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Current Resume</p>
                 <a 
                   href={user.resumeUrl} 
                   target="_blank" 
@@ -189,67 +207,31 @@ export function ProfilePanel() {
       </Card>
 
       {/* Main Profile Form */}
-      <Card>
+      <Card className="glass-panel border-white/10">
         <CardHeader>
-          <CardTitle>Academic & Personal Details</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-white">Academic & Personal Details</CardTitle>
+          <CardDescription className="text-text-muted">
             Ensure all information matches your college records exactly.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="pf-name">Full Name</Label>
-              <Input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-usn">USN</Label>
-              <Input id="pf-usn" value={usn} onChange={(e) => setUsn(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-ce">College Email</Label>
-              <Input id="pf-ce" type="email" value={collegeEmail} onChange={(e) => setCollegeEmail(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-pe">Personal Email</Label>
-              <Input id="pf-pe" type="email" value={personalEmail} onChange={(e) => setPersonalEmail(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-phone">Phone Number</Label>
-              <Input id="pf-phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-aadhar">Aadhar Number</Label>
-              <Input id="pf-aadhar" value={aadhar} onChange={(e) => setAadhar(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-li">LinkedIn Profile URL</Label>
-              <Input id="pf-li" value={linkedIn} onChange={(e) => setLinkedIn(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-gh">GitHub Profile URL</Label>
-              <Input id="pf-gh" value={gitHub} onChange={(e) => setGitHub(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-cgpa">UG CGPA</Label>
-              <Input id="pf-cgpa" type="number" step="0.01" value={cgpa} onChange={(e) => setCgpa(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-fs">1st Sem SGPA</Label>
-              <Input id="pf-fs" type="number" step="0.01" value={firstSem} onChange={(e) => setFirstSem(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-10">10th Aggregate (%)</Label>
-              <Input id="pf-10" type="number" step="0.1" value={tenth} onChange={(e) => setTenth(e.target.value)} disabled={readOnly} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-12">12th Aggregate (%)</Label>
-              <Input id="pf-12" type="number" step="0.1" value={twelfth} onChange={(e) => setTwelfth(e.target.value)} disabled={readOnly} />
-            </div>
+            <FormField label="Full Name" value={name} onChange={setName} id="pf-name" disabled={readOnly} />
+            <FormField label="USN" value={usn} onChange={setUsn} id="pf-usn" disabled={readOnly} />
+            <FormField label="College Email" value={collegeEmail} onChange={setCollegeEmail} id="pf-ce" type="email" disabled={readOnly} />
+            <FormField label="Personal Email" value={personalEmail} onChange={setPersonalEmail} id="pf-pe" type="email" disabled={readOnly} />
+            <FormField label="Phone Number" value={phone} onChange={setPhone} id="pf-phone" disabled={readOnly} />
+            <FormField label="Aadhar Number" value={aadhar} onChange={setAadhar} id="pf-aadhar" disabled={readOnly} />
+            <FormField label="LinkedIn URL" value={linkedIn} onChange={setLinkedIn} id="pf-li" disabled={readOnly} />
+            <FormField label="GitHub URL" value={gitHub} onChange={setGitHub} id="pf-gh" disabled={readOnly} />
+            <FormField label="UG CGPA" value={cgpa} onChange={setCgpa} id="pf-cgpa" type="number" disabled={readOnly} />
+            <FormField label="1st Sem SGPA" value={firstSem} onChange={setFirstSem} id="pf-fs" type="number" disabled={readOnly} />
+            <FormField label="10th Aggregate (%)" value={tenth} onChange={setTenth} id="pf-10" type="number" disabled={readOnly} />
+            <FormField label="12th Aggregate (%)" value={twelfth} onChange={setTwelfth} id="pf-12" type="number" disabled={readOnly} />
           </div>
         </CardContent>
-        <CardFooter className="justify-end border-t p-6 bg-slate-50/50 dark:bg-slate-900/50">
-          <Button onClick={save} disabled={readOnly} className="gap-2">
+        <CardFooter className="justify-end border-t border-white/10 p-6 bg-white/5">
+          <Button onClick={saveProfile} disabled={readOnly} className="gap-2 bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20">
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save Profile'}
           </Button>

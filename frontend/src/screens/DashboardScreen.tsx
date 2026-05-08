@@ -6,18 +6,19 @@ import { CompaniesPanel } from '../panels/CompaniesPanel'
 import { FormsPanel } from '../panels/FormsPanel'
 import { ProfilePanel } from '../panels/ProfilePanel'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { 
   User, 
   Building2, 
-  ClipboardList, 
+  FileText, 
   MessageSquare, 
   Settings, 
-  LogOut, 
+  LogOut,
   Menu,
   X,
-  ChevronRight
+  GraduationCap
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 type Panel = {
   id: string
@@ -30,14 +31,6 @@ export default function DashboardScreen() {
   const { session, logout } = useAuth()
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)')
-    const fn = () => {}
-    fn()
-    mq.addEventListener('change', fn)
-    return () => mq.removeEventListener('change', fn)
-  }, [])
 
   const panels: Panel[] = useMemo(
     () => {
@@ -58,7 +51,7 @@ export default function DashboardScreen() {
         {
           id: 'forms',
           label: 'Forms',
-          icon: <ClipboardList className="w-5 h-5" />,
+          icon: <FileText className="w-5 h-5" />,
           element: <FormsPanel />,
         },
         {
@@ -74,7 +67,7 @@ export default function DashboardScreen() {
                 label: 'SPC Admin',
                 icon: <Settings className="w-5 h-5" />,
                 element: <AdminPanel />,
-              } as Panel,
+              } satisfies Panel,
             ]
           : []),
       ]
@@ -91,148 +84,147 @@ export default function DashboardScreen() {
   const safeIndex = Math.min(selectedIndex, panels.length - 1)
   const active = panels[safeIndex] ?? panels[0]
 
-  return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Desktop Sidebar */}
-      <aside className={cn(
-        "hidden lg:flex flex-col w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300",
-      )}>
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-primary rounded-lg">
-              <Building2 className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-xl tracking-tight">Placement</span>
+  const Sidebar = ({ className = '' }: { className?: string }) => (
+    <aside className={`flex flex-col h-full ${className}`}>
+      <div className="p-6 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-primary/20">
+            <GraduationCap className="w-6 h-6 text-primary" />
           </div>
-          <p className="text-xs text-slate-500 font-medium px-1 uppercase tracking-wider">
-            {session.isSpc ? 'SPC Administrator' : 'Student Portal'}
-          </p>
+          <div>
+            <h2 className="text-lg font-semibold text-white">Placement Desk</h2>
+            <p className="text-xs text-muted-foreground">
+              {session.isSpc ? 'Student + SPC' : 'Student Access'}
+            </p>
+          </div>
         </div>
+      </div>
 
-        <nav className="flex-1 px-3 space-y-1">
+      <ScrollArea className="flex-1 p-4">
+        <nav className="space-y-1">
           {panels.map((p, i) => (
             <button
               key={p.id}
-              onClick={() => setSelectedIndex(i)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                i === safeIndex 
-                  ? "bg-primary/10 text-primary" 
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-50"
-              )}
+              type="button"
+              onClick={() => {
+                setSelectedIndex(i)
+                setIsMobileMenuOpen(false)
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                i === safeIndex
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                  : 'text-muted-foreground hover:bg-white/5 hover:text-white'
+              }`}
             >
               {p.icon}
               {p.label}
-              {i === safeIndex && <ChevronRight className="w-4 h-4 ml-auto" />}
             </button>
           ))}
         </nav>
+      </ScrollArea>
 
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3 p-2 mb-4">
-            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-xs font-bold">
-              {session.user.name?.charAt(0) || 'S'}
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium truncate">{session.user.name || 'Student'}</p>
-              <p className="text-xs text-slate-500 truncate">{session.user.collegeEmailId}</p>
-            </div>
+      <div className="p-4 border-t border-white/10">
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-3"
+          onClick={logout}
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </Button>
+      </div>
+    </aside>
+  )
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex fixed left-0 top-0 bottom-0 w-72 z-40">
+        <Card className="w-full h-full rounded-none border-0 bg-white/5 backdrop-blur-xl border-r border-white/10">
+          <Sidebar />
+        </Card>
+      </div>
+
+      {/* Mobile Header */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-white/5 backdrop-blur-xl border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/20">
+            <GraduationCap className="w-5 h-5 text-primary" />
           </div>
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start gap-3 text-slate-600 dark:text-slate-400 hover:text-destructive hover:bg-destructive/10" 
-            onClick={logout}
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </Button>
+          <span className="font-semibold text-white">RVCE Placement</span>
         </div>
-      </aside>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? (
+            <X className="w-5 h-5" />
+          ) : (
+            <Menu className="w-5 h-5" />
+          )}
+        </Button>
+      </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <header className="h-16 flex items-center justify-between px-4 lg:px-8 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="lg:hidden"
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <Menu className="w-6 h-6" />
-            </Button>
-            <h2 className="text-lg font-semibold lg:text-xl">{active.label}</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="hidden sm:flex">
-              Help & Support
-            </Button>
-          </div>
-        </header>
-
-        {/* Panel Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
-          <div className="max-w-6xl mx-auto h-full">
-            {active.element}
-          </div>
-        </div>
-      </main>
-
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
+        <div className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}>
           <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          <aside className="relative w-72 max-w-[80vw] bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col">
-            <div className="p-6 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-primary rounded-lg">
-                  <Building2 className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <span className="font-bold text-xl">Placement</span>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-            
-            <nav className="flex-1 p-4 space-y-1">
-              {panels.map((p, i) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    setSelectedIndex(i)
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition-colors",
-                    i === safeIndex 
-                      ? "bg-primary/10 text-primary" 
-                      : "text-slate-600 dark:text-slate-400"
-                  )}
-                >
-                  {p.icon}
-                  {p.label}
-                </button>
-              ))}
-            </nav>
-
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start gap-3 text-destructive" 
-                onClick={logout}
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </Button>
-            </div>
-          </aside>
+            className="absolute right-0 top-0 bottom-0 w-72" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Card className="h-full rounded-none border-0 bg-slate-900 border-l border-white/10">
+              <Sidebar />
+            </Card>
+          </div>
         </div>
       )}
+
+      {/* Main Content */}
+      <div className="lg:ml-72">
+        <main className="min-h-screen pt-16 lg:pt-0">
+          {/* Desktop Header */}
+          <header className="hidden lg:flex items-center justify-between px-8 py-6 border-b border-white/10 bg-white/5 backdrop-blur-xl">
+            <div>
+              <h1 className="text-2xl font-semibold text-white">
+                Welcome, {session.user.name?.trim() || 'Student'}
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {session.isSpc
+                  ? 'You can manage placement operations and still act as a student.'
+                  : 'Keep your verified profile sharp and respond quickly to drives.'}
+              </p>
+            </div>
+            <Button variant="outline" onClick={logout} className="gap-2">
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
+          </header>
+
+          <div className="p-4 lg:p-8">
+            {active.element}
+          </div>
+        </main>
+      </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 flex items-center justify-around px-2 py-2 bg-white/5 backdrop-blur-xl border-t border-white/10 safe-area-bottom">
+        {panels.map((p, i) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setSelectedIndex(i)}
+            className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
+              i === safeIndex
+                ? 'text-primary'
+                : 'text-muted-foreground'
+            }`}
+          >
+            {p.icon}
+            <span className="text-xs font-medium">{p.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }

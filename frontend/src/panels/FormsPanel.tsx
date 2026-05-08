@@ -4,9 +4,9 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DynamicFormModal } from './DynamicFormModal'
 import { ClipboardList, MessageSquareText, FileQuestion, CheckCircle2, AlertCircle, Globe, Building } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export function FormsPanel() {
   const { repo } = useAuth()
@@ -44,37 +44,41 @@ export function FormsPanel() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        {[1, 2, 3].map(i => <Skeleton key={i} className="h-40 w-full" />)}
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     )
   }
 
   if (err || !forms) {
     return (
-      <Card className="border-destructive/20 bg-destructive/5">
-        <CardContent className="pt-6 text-center">
-          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Failed to load forms</h3>
-          <p className="text-sm text-slate-500 mb-4">{err ?? 'An unknown error occurred.'}</p>
-          <Button onClick={load}>Retry</Button>
-        </CardContent>
+      <Card className="glass-panel border-destructive/20 text-center p-12 max-w-2xl mx-auto">
+        <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+        <h3 className="text-xl font-bold mb-2 text-white">Failed to load forms</h3>
+        <p className="text-text-muted mb-6">{err ?? 'An unknown error occurred.'}</p>
+        <Button onClick={load}>Retry</Button>
       </Card>
     )
   }
 
   if (forms.length === 0) {
     return (
-      <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-800">
-        <ClipboardList className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">All caught up!</h3>
-        <p className="text-slate-500">No pending forms assigned to you at the moment.</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 text-center">
+        <div className="p-6 rounded-full bg-white/5">
+          <ClipboardList className="w-10 h-10 text-text-muted opacity-50" />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-white">All caught up!</h3>
+          <p className="text-sm text-text-muted mt-1 max-w-xs">
+            No pending forms assigned to you at the moment. SPC-created forms will appear here.
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 pb-20 lg:pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {detail ? (
         <DynamicFormModal
           detail={detail}
@@ -85,11 +89,11 @@ export function FormsPanel() {
       
       <div className="grid grid-cols-1 gap-6">
         {forms.map((f) => (
-          <Card key={f.id} className="overflow-hidden border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <Card key={f.id} className="glass-panel border-white/10 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300">
             <CardHeader className="pb-4">
-              <div className="flex justify-between items-start">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div className="space-y-1">
-                  <CardTitle className="text-xl flex items-center gap-2">
+                  <CardTitle className="text-xl flex items-center gap-2 text-white">
                     {f.title}
                     {(f.responseCount ?? 0) > 0 && (
                       <CheckCircle2 className="w-5 h-5 text-green-500" />
@@ -97,16 +101,16 @@ export function FormsPanel() {
                   </CardTitle>
                   <CardDescription className="flex items-center gap-2">
                     {f.companyName ? (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 text-text-muted">
                         <Building className="w-3 h-3" /> {f.companyName}
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-primary">
-                        <Globe className="w-3 h-3" /> Global
+                        <Globe className="w-3 h-3" /> Global Form
                       </span>
                     )}
-                    <span className="text-slate-300 dark:text-slate-700">•</span>
-                    <span className="uppercase font-semibold tracking-wider text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">
+                    <span className="text-white/20">•</span>
+                    <span className="uppercase font-bold tracking-widest text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/60">
                       {f.type}
                     </span>
                   </CardDescription>
@@ -114,7 +118,11 @@ export function FormsPanel() {
                 <Button 
                   onClick={() => void openForm(f)}
                   variant={(f.responseCount ?? 0) > 0 ? "outline" : "default"}
-                  className="gap-2"
+                  className={cn(
+                    "gap-2 w-full sm:w-auto",
+                    (f.responseCount ?? 0) === 0 && "bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20",
+                    (f.responseCount ?? 0) > 0 && "border-white/10 text-white hover:bg-white/5"
+                  )}
                 >
                   {(f.responseCount ?? 0) > 0 ? (
                     <>Update Response</>
@@ -125,16 +133,16 @@ export function FormsPanel() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-6">
+              <div className="flex gap-6 border-t border-white/5 pt-4 mt-2">
                 <div className="flex items-center gap-2 text-sm">
-                  <FileQuestion className="w-4 h-4 text-slate-400" />
-                  <span className="font-medium">{f.questionCount ?? 0}</span>
-                  <span className="text-slate-500">Questions</span>
+                  <FileQuestion className="w-4 h-4 text-text-muted" />
+                  <span className="font-bold text-white">{f.questionCount ?? 0}</span>
+                  <span className="text-text-muted">Questions</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <MessageSquareText className="w-4 h-4 text-slate-400" />
-                  <span className="font-medium">{f.responseCount ?? 0}</span>
-                  <span className="text-slate-500">Responses</span>
+                  <MessageSquareText className="w-4 h-4 text-text-muted" />
+                  <span className="font-bold text-white">{f.responseCount ?? 0}</span>
+                  <span className="text-text-muted">Responses</span>
                 </div>
               </div>
             </CardContent>

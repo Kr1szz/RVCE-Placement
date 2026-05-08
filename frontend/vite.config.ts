@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import tailwindcss from 'tailwindcss'
+import autoprefixer from 'autoprefixer'
 import path from 'path'
 
 // https://vite.dev/config/
@@ -8,43 +10,46 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  build: {
+    target: 'es2020',
+    minify: 'esbuild',
+  },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  define: {
+    global: 'globalThis',
+  },
+  css: {
+    postcss: {
+      plugins: [tailwindcss(), autoprefixer()],
     },
   },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'pwa-icon.svg'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'MCA Placement Manager',
+        name: 'RVCE Placement',
         short_name: 'Placement',
-        description: 'RVCE placement portal — profile, companies, forms, chat, and SPC admin.',
-        theme_color: '#0070cc',
-        background_color: '#ffffff',
-        display: 'standalone',
-        orientation: 'portrait-primary',
-        start_url: '/',
+        description: 'Placement Portal for RVCE Students',
+        theme_color: '#0f172a',
         icons: [
           {
-            src: 'pwa-icon.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml',
-            purpose: 'any',
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
           },
           {
-            src: 'pwa-icon.svg',
+            src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
-            purpose: 'maskable',
-          },
-        ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-      },
-    }),
+            type: 'image/png'
+          }
+        ]
+      }
+    })
   ],
 })

@@ -2,14 +2,18 @@ import { createContext, useCallback, useContext, useMemo, type ReactNode } from 
 import { toast } from 'sonner'
 
 type ToastCtx = {
-  showToast: (message: string) => void
+  showToast: (message: string, type?: 'success' | 'error') => void
 }
 
 const ToastContext = createContext<ToastCtx | null>(null)
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const showToast = useCallback((message: string) => {
-    toast(message)
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    if (type === 'success') {
+      toast.success(message)
+    } else {
+      toast.error(message)
+    }
   }, [])
 
   const value = useMemo(() => ({ showToast }), [showToast])

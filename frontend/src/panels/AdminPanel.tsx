@@ -39,13 +39,18 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Separator } from '@/components/ui/separator'
 import { 
   Plus, 
   Send, 
   CheckCircle2, 
   AlertCircle,
   Download,
-  Eye
+  Eye,
+  Building2,
+  FileQuestion,
+  FileText,
+  Users
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -67,7 +72,6 @@ type AdminData = {
   forms: PlacementFormSummary[]
   students: StudentSummary[]
 }
-
 
 export function AdminPanel() {
   const { repo } = useAuth()
@@ -131,18 +135,11 @@ export function AdminPanel() {
   }, [repo])
 
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)')
-    const fn = () => {}
-    fn()
-    mq.addEventListener('change', fn)
-    return () => mq.removeEventListener('change', fn)
-  }, [])
-
-  useEffect(() => {
     void load()
   }, [load])
 
   const run = async (task: () => Promise<void>, ok?: string) => {
+    setBusy(true)
     try {
       await task()
       await load()
@@ -243,188 +240,213 @@ export function AdminPanel() {
     }
   }
 
-  if (loading) return <div className="p-20 text-center animate-pulse text-slate-400 font-medium">Loading SPC dashboard...</div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      </div>
+    )
+  }
 
-  if (err || !data) return (
-    <Card className="border-destructive/20 bg-destructive/5 text-center p-12">
-      <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-      <h3 className="text-xl font-bold mb-2">Admin Panel Error</h3>
-      <p className="text-slate-500 mb-6">{err}</p>
-      <Button onClick={load}>Reload Dashboard</Button>
-    </Card>
-  )
+  if (err || !data) {
+    return (
+      <Card className="glass-panel text-center p-12 max-w-2xl mx-auto">
+        <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+        <h3 className="text-xl font-bold mb-2">Admin Panel Error</h3>
+        <p className="text-text-muted mb-6">{err}</p>
+        <Button onClick={load}>Reload Dashboard</Button>
+      </Card>
+    )
+  }
 
   return (
-    <div className="space-y-10 pb-20 animate-in fade-in duration-700">
+    <div className="space-y-8 pb-20 animate-in fade-in duration-700">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-3xl font-bold text-white">SPC Dashboard</h1>
+        <p className="text-text-muted text-sm">Manage recruitment drives, student profiles, and placement forms.</p>
+      </div>
+
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="companies">Companies</TabsTrigger>
-          <TabsTrigger value="forms">Forms & Questions</TabsTrigger>
-          <TabsTrigger value="students">Students</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 mb-8 bg-white/5 border border-white/10 p-1 rounded-xl">
+          <TabsTrigger value="overview" className="rounded-lg">Overview</TabsTrigger>
+          <TabsTrigger value="companies" className="rounded-lg">Companies</TabsTrigger>
+          <TabsTrigger value="forms" className="rounded-lg">Forms</TabsTrigger>
+          <TabsTrigger value="students" className="rounded-lg">Students</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-primary/5 border-primary/10">
+            <Card className="glass-panel border-white/10">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-bold text-primary uppercase tracking-wider">Active Drives</CardTitle>
-                <div className="text-3xl font-bold">{data.companies.length}</div>
+                <CardTitle className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                  <Building2 className="w-4 h-4" /> Active Drives
+                </CardTitle>
+                <div className="text-3xl font-bold text-white">{data.companies.length}</div>
               </CardHeader>
             </Card>
-            <Card className="bg-emerald-500/5 border-emerald-500/10">
+            <Card className="glass-panel border-white/10">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Total Students</CardTitle>
-                <div className="text-3xl font-bold">{data.students.length}</div>
+                <CardTitle className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                  <Users className="w-4 h-4" /> Total Students
+                </CardTitle>
+                <div className="text-3xl font-bold text-white">{data.students.length}</div>
               </CardHeader>
             </Card>
-            <Card className="bg-amber-500/5 border-amber-500/10">
+            <Card className="glass-panel border-white/10">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-bold text-amber-600 uppercase tracking-wider">Forms Shared</CardTitle>
-                <div className="text-3xl font-bold">{data.forms.length}</div>
+                <CardTitle className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Forms Shared
+                </CardTitle>
+                <div className="text-3xl font-bold text-white">{data.forms.length}</div>
               </CardHeader>
             </Card>
-            <Card className="bg-indigo-500/5 border-indigo-500/10">
+            <Card className="glass-panel border-white/10">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Question Bank</CardTitle>
-                <div className="text-3xl font-bold">{data.questions.length}</div>
+                <CardTitle className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                  <FileQuestion className="w-4 h-4" /> Question Bank
+                </CardTitle>
+                <div className="text-3xl font-bold text-white">{data.questions.length}</div>
               </CardHeader>
             </Card>
           </div>
 
-          <Card>
+          <Card className="glass-panel border-white/10">
             <CardHeader>
               <CardTitle>Recent Companies</CardTitle>
-              <CardDescription>Latest placement opportunities added to the portal.</CardDescription>
+              <CardDescription className="text-text-muted">Latest placement opportunities added to the portal.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Min CGPA</TableHead>
-                    <TableHead>Package</TableHead>
-                    <TableHead>Test Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.companies.slice(0, 5).map(c => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-bold">{c.name}</TableCell>
-                      <TableCell>{c.minCgpa.toFixed(1)}</TableCell>
-                      <TableCell>{c.package || 'TBD'}</TableCell>
-                      <TableCell>{c.testDate ? formatDate(c.testDate) : 'TBD'}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setExportCompanyId(c.id)}>
-                          <Download className="w-4 h-4 mr-1" /> Export
-                        </Button>
-                      </TableCell>
+              <div className="rounded-xl border border-white/10 overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-white/5">
+                    <TableRow className="border-white/10 hover:bg-transparent">
+                      <TableHead className="text-text-main font-bold">Company</TableHead>
+                      <TableHead className="text-text-main font-bold">Min CGPA</TableHead>
+                      <TableHead className="text-text-main font-bold">Package</TableHead>
+                      <TableHead className="text-text-main font-bold">Test Date</TableHead>
+                      <TableHead className="text-right text-text-main font-bold">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {data.companies.slice(0, 5).map(c => (
+                      <TableRow key={c.id} className="border-white/10 hover:bg-white/5">
+                        <TableCell className="font-bold text-white">{c.name}</TableCell>
+                        <TableCell className="text-text-muted">{c.minCgpa.toFixed(1)}</TableCell>
+                        <TableCell className="text-text-muted">{c.package || 'TBD'}</TableCell>
+                        <TableCell className="text-text-muted">{c.testDate ? formatDate(c.testDate) : 'TBD'}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => setExportCompanyId(c.id)} className="hover:bg-white/10 text-primary">
+                            <Download className="w-4 h-4 mr-1" /> Export
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="companies" className="space-y-6">
-          <Card>
+          <Card className="glass-panel border-white/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="w-5 h-5 text-primary" /> Create Drive
               </CardTitle>
-              <CardDescription>Add a new company recruitment drive details.</CardDescription>
+              <CardDescription className="text-text-muted">Add a new company recruitment drive details.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <Label>Company Name</Label>
-                  <Input placeholder="e.g. Google" value={cName} onChange={e => setCName(e.target.value)} />
+                  <Label className="text-text-main">Company Name</Label>
+                  <Input className="bg-white/5 border-white/10 text-white" placeholder="e.g. Google" value={cName} onChange={e => setCName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Min CGPA</Label>
-                  <Input type="number" step="0.1" placeholder="e.g. 7.5" value={cCgpa} onChange={e => setCCgpa(e.target.value)} />
+                  <Label className="text-text-main">Min CGPA</Label>
+                  <Input className="bg-white/5 border-white/10 text-white" type="number" step="0.1" placeholder="e.g. 7.5" value={cCgpa} onChange={e => setCCgpa(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Package</Label>
-                  <Input placeholder="e.g. 25 LPA" value={cPkg} onChange={e => setCPkg(e.target.value)} />
+                  <Label className="text-text-main">Package</Label>
+                  <Input className="bg-white/5 border-white/10 text-white" placeholder="e.g. 25 LPA" value={cPkg} onChange={e => setCPkg(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Stipend</Label>
-                  <Input placeholder="e.g. 50k / month" value={cStip} onChange={e => setCStip(e.target.value)} />
+                  <Label className="text-text-main">Stipend</Label>
+                  <Input className="bg-white/5 border-white/10 text-white" placeholder="e.g. 50k / month" value={cStip} onChange={e => setCStip(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Test Date (ISO)</Label>
-                  <Input placeholder="2026-06-15" value={cTest} onChange={e => setCTest(e.target.value)} />
+                  <Label className="text-text-main">Test Date (YYYY-MM-DD)</Label>
+                  <Input className="bg-white/5 border-white/10 text-white" placeholder="2026-06-15" value={cTest} onChange={e => setCTest(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Interview Date (ISO)</Label>
-                  <Input placeholder="2026-06-20" value={cInt} onChange={e => setCInt(e.target.value)} />
+                  <Label className="text-text-main">Interview Date (YYYY-MM-DD)</Label>
+                  <Input className="bg-white/5 border-white/10 text-white" placeholder="2026-06-20" value={cInt} onChange={e => setCInt(e.target.value)} />
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="justify-end bg-slate-50/50 p-6 border-t">
+            <CardFooter className="justify-end p-6 border-t border-white/10">
               <Button onClick={createCompany} disabled={busy || !cName}>Add Company</Button>
             </CardFooter>
           </Card>
 
-          <Card>
+          <Card className="glass-panel border-white/10">
             <CardHeader>
               <CardTitle>Manage Drives</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Package</TableHead>
-                    <TableHead>Stipend</TableHead>
-                    <TableHead>Min CGPA</TableHead>
-                    <TableHead className="text-right">Export</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.companies.map(c => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-bold text-primary">{c.name}</TableCell>
-                      <TableCell>{c.package || 'TBD'}</TableCell>
-                      <TableCell>{c.stipend || 'TBD'}</TableCell>
-                      <TableCell>{c.minCgpa}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => setExportCompanyId(c.id)}>
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
+              <div className="rounded-xl border border-white/10 overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-white/5">
+                    <TableRow className="border-white/10 hover:bg-transparent">
+                      <TableHead className="text-text-main font-bold">Company</TableHead>
+                      <TableHead className="text-text-main font-bold">Package</TableHead>
+                      <TableHead className="text-text-main font-bold">Stipend</TableHead>
+                      <TableHead className="text-text-main font-bold">Min CGPA</TableHead>
+                      <TableHead className="text-right text-text-main font-bold">Export</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {data.companies.map(c => (
+                      <TableRow key={c.id} className="border-white/10 hover:bg-white/5">
+                        <TableCell className="font-bold text-primary">{c.name}</TableCell>
+                        <TableCell className="text-text-muted">{c.package || 'TBD'}</TableCell>
+                        <TableCell className="text-text-muted">{c.stipend || 'TBD'}</TableCell>
+                        <TableCell className="text-text-muted">{c.minCgpa}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => setExportCompanyId(c.id)} className="hover:bg-white/10">
+                            <Download className="w-4 h-4 text-primary" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="forms" className="space-y-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card>
+            <Card className="glass-panel border-white/10">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Plus className="w-5 h-5 text-primary" /> Add Question
                 </CardTitle>
-                <CardDescription>Create reusable fields for your forms.</CardDescription>
+                <CardDescription className="text-text-muted">Create reusable fields for your forms.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Question Label</Label>
-                  <Input placeholder="e.g. Current Location" value={qText} onChange={e => setQText(e.target.value)} />
+                  <Label className="text-text-main">Question Label</Label>
+                  <Input className="bg-white/5 border-white/10 text-white" placeholder="e.g. Current Location" value={qText} onChange={e => setQText(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Field Type</Label>
+                  <Label className="text-text-main">Field Type</Label>
                   <Select value={qType} onValueChange={(v: any) => setQType(v)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/5 border-white/10 text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-slate-900 border-white/10 text-white">
                       <SelectItem value="text">Plain Text</SelectItem>
                       <SelectItem value="number">Number</SelectItem>
                       <SelectItem value="boolean">Yes / No</SelectItem>
@@ -434,36 +456,36 @@ export function AdminPanel() {
                 </div>
                 {qType === 'dropdown' && (
                   <div className="space-y-2 animate-in slide-in-from-top-2">
-                    <Label>Options (comma separated)</Label>
-                    <Input placeholder="Bangalore, Pune, Hyderabad" value={qOpts} onChange={e => setQOpts(e.target.value)} />
+                    <Label className="text-text-main">Options (comma separated)</Label>
+                    <Input className="bg-white/5 border-white/10 text-white" placeholder="Bangalore, Pune, Hyderabad" value={qOpts} onChange={e => setQOpts(e.target.value)} />
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="justify-end border-t p-6">
+              <CardFooter className="justify-end border-t border-white/10 p-6">
                 <Button onClick={createQuestion} disabled={busy || !qText}>Create Question</Button>
               </CardFooter>
             </Card>
 
-            <Card>
+            <Card className="glass-panel border-white/10">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Plus className="w-5 h-5 text-primary" /> Create Form
                 </CardTitle>
-                <CardDescription>Group questions into a fillable form.</CardDescription>
+                <CardDescription className="text-text-muted">Group questions into a fillable form.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Form Title</Label>
-                  <Input placeholder="e.g. Pre-Placement Survey" value={fTitle} onChange={e => setFTitle(e.target.value)} />
+                  <Label className="text-text-main">Form Title</Label>
+                  <Input className="bg-white/5 border-white/10 text-white" placeholder="e.g. Pre-Placement Survey" value={fTitle} onChange={e => setFTitle(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Form Type</Label>
+                    <Label className="text-text-main">Form Type</Label>
                     <Select value={fType} onValueChange={(v: any) => setFType(v)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-slate-900 border-white/10 text-white">
                         <SelectItem value="consent">Consent</SelectItem>
                         <SelectItem value="tracker">Tracker</SelectItem>
                         <SelectItem value="custom">Custom</SelectItem>
@@ -471,12 +493,12 @@ export function AdminPanel() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Link to Drive</Label>
+                    <Label className="text-text-main">Link to Drive</Label>
                     <Select value={fCompanyId} onValueChange={setFCompanyId}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-slate-900 border-white/10 text-white">
                         <SelectItem value="global">Global (All Students)</SelectItem>
                         {data.companies.map(c => (
                           <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
@@ -486,20 +508,20 @@ export function AdminPanel() {
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="justify-end border-t p-6">
+              <CardFooter className="justify-end border-t border-white/10 p-6">
                 <Button onClick={createForm} disabled={busy || !fTitle}>Create Form</Button>
               </CardFooter>
             </Card>
           </div>
 
-          <Card>
+          <Card className="glass-panel border-white/10">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Map Questions & Publish</CardTitle>
-                <CardDescription>Select questions for a form and notify students.</CardDescription>
+                <CardDescription className="text-text-muted">Select questions for a form and notify students.</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={saveMapping} disabled={busy || !mapFormId}>Save Mapping</Button>
+                <Button variant="outline" onClick={saveMapping} disabled={busy || !mapFormId} className="border-white/10 text-white hover:bg-white/5">Save Mapping</Button>
                 <Button onClick={sendForm} disabled={busy || !mapFormId} className="gap-2">
                   <Send className="w-4 h-4" /> Notify
                 </Button>
@@ -507,12 +529,12 @@ export function AdminPanel() {
             </CardHeader>
             <CardContent className="space-y-8">
               <div className="max-w-md">
-                <Label className="mb-2 block">Active Form</Label>
+                <Label className="mb-2 block text-text-main">Active Form</Label>
                 <Select value={mapFormId} onValueChange={setMapFormId}>
-                  <SelectTrigger className="w-full font-bold">
+                  <SelectTrigger className="w-full font-bold bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder="Select a form to configure" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-slate-900 border-white/10 text-white">
                     {data.forms.map(f => (
                       <SelectItem key={f.id} value={String(f.id)}>{f.title}</SelectItem>
                     ))}
@@ -523,15 +545,16 @@ export function AdminPanel() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {data.questions.map(q => (
                   <div key={q.id} className={cn(
-                    "p-4 rounded-xl border-2 transition-all",
-                    mapped[q.id] ? "border-primary/40 bg-primary/5 shadow-sm" : "border-slate-100 bg-white dark:bg-slate-900 opacity-60"
+                    "p-4 rounded-xl border transition-all",
+                    mapped[q.id] ? "border-primary bg-primary/10 shadow-lg shadow-primary/10" : "border-white/5 bg-white/5 opacity-60"
                   )}>
                     <div className="flex items-start justify-between mb-4">
                       <div className="space-y-1">
-                        <p className="font-bold leading-none">{q.questionText}</p>
-                        <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{q.fieldType}</p>
+                        <p className="font-bold leading-none text-white">{q.questionText}</p>
+                        <p className="text-[10px] uppercase font-bold text-primary tracking-wider">{q.fieldType}</p>
                       </div>
                       <Checkbox 
+                        className="border-white/20 data-[state=checked]:bg-primary"
                         checked={mapped[q.id] || false} 
                         onCheckedChange={v => setMapped(m => ({...m, [q.id]: !!v}))} 
                       />
@@ -539,6 +562,7 @@ export function AdminPanel() {
                     <div className="flex items-center gap-2">
                       <Checkbox 
                         id={`req-${q.id}`}
+                        className="border-white/20 data-[state=checked]:bg-primary"
                         disabled={!mapped[q.id]}
                         checked={required.has(q.id)}
                         onCheckedChange={v => setRequired(prev => {
@@ -547,7 +571,7 @@ export function AdminPanel() {
                           return n;
                         })}
                       />
-                      <Label htmlFor={`req-${q.id}`} className={cn("text-xs", !mapped[q.id] && "text-slate-400")}>Required field</Label>
+                      <Label htmlFor={`req-${q.id}`} className={cn("text-xs", mapped[q.id] ? "text-text-main" : "text-text-muted")}>Required field</Label>
                     </div>
                   </div>
                 ))}
@@ -555,10 +579,10 @@ export function AdminPanel() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-panel border-white/10">
             <CardHeader>
               <CardTitle>View Submissions</CardTitle>
-              <CardDescription>Monitor student participation and download data.</CardDescription>
+              <CardDescription className="text-text-muted">Monitor student participation and download data.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -566,12 +590,12 @@ export function AdminPanel() {
                   <Button 
                     key={f.id} 
                     variant="outline" 
-                    className="justify-between h-auto py-3 px-4"
+                    className="justify-between h-auto py-3 px-4 border-white/10 bg-white/5 hover:bg-white/10 text-white"
                     onClick={() => void openResponses(f.id, f.title)}
                   >
                     <div className="text-left overflow-hidden">
                       <p className="font-bold truncate">{f.title}</p>
-                      <p className="text-[10px] text-slate-500">{f.responseCount || 0} responses</p>
+                      <p className="text-[10px] text-text-muted">{f.responseCount || 0} responses</p>
                     </div>
                     <Eye className="w-4 h-4 text-primary opacity-50" />
                   </Button>
@@ -582,29 +606,29 @@ export function AdminPanel() {
         </TabsContent>
 
         <TabsContent value="students" className="space-y-6">
-          <Card>
+          <Card className="glass-panel border-white/10">
             <CardHeader>
               <CardTitle>Student Verification</CardTitle>
-              <CardDescription>Verify profiles to prevent further edits before sharing data with companies.</CardDescription>
+              <CardDescription className="text-text-muted">Verify profiles to prevent further edits before sharing data with companies.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {data.students.map(s => (
-                  <Card key={s.id} className="bg-slate-50 dark:bg-slate-800/40 border-none">
+                  <Card key={s.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-none">
                     <CardContent className="p-4 flex flex-col gap-4">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
                           {s.name.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold truncate">{s.name}</p>
-                          <p className="text-xs text-slate-500 truncate">{s.collegeEmailId}</p>
+                          <p className="font-bold truncate text-white">{s.name}</p>
+                          <p className="text-xs text-text-muted truncate">{s.collegeEmailId}</p>
                         </div>
                       </div>
                       <Button 
                         size="sm" 
                         variant={s.verified ? "ghost" : "default"}
-                        className={cn("w-full", s.verified && "text-green-500 bg-green-500/10")}
+                        className={cn("w-full", s.verified ? "text-green-400 bg-green-400/10 hover:bg-green-400/20" : "bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20")}
                         disabled={s.verified || busy}
                         onClick={() => void verifyStudent(s.id)}
                       >
@@ -619,12 +643,13 @@ export function AdminPanel() {
         </TabsContent>
       </Tabs>
 
+      {/* Dialogs */}
       {exportCompanyId != null && (
         <Dialog open={true} onOpenChange={() => setExportCompanyId(null)}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="glass-panel border-white/10 text-white max-w-md">
             <DialogHeader>
               <DialogTitle>Configure Export</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-text-muted">
                 Select optional columns to include in the Excel sheet.
               </DialogDescription>
             </DialogHeader>
@@ -633,6 +658,7 @@ export function AdminPanel() {
                 <div key={f.key} className="flex items-center space-x-2">
                   <Checkbox 
                     id={`field-${f.key}`} 
+                    className="border-white/20"
                     checked={exportFields.has(f.key)}
                     onCheckedChange={v => setExportFields(prev => {
                       const n = new Set(prev);
@@ -640,13 +666,13 @@ export function AdminPanel() {
                       return n;
                     })}
                   />
-                  <Label htmlFor={`field-${f.key}`} className="text-sm cursor-pointer">{f.label}</Label>
+                  <Label htmlFor={`field-${f.key}`} className="text-sm cursor-pointer text-text-main">{f.label}</Label>
                 </div>
               ))}
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setExportCompanyId(null)}>Cancel</Button>
-              <Button onClick={doExportCompany} className="gap-2">
+              <Button variant="ghost" onClick={() => setExportCompanyId(null)} className="text-white hover:bg-white/5">Cancel</Button>
+              <Button onClick={doExportCompany} className="gap-2 bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20">
                 <Download className="w-4 h-4" /> Start Export
               </Button>
             </DialogFooter>
@@ -656,34 +682,34 @@ export function AdminPanel() {
 
       {responsesModal && (
         <Dialog open={true} onOpenChange={() => setResponsesModal(null)}>
-          <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogContent className="glass-panel border-white/10 text-white max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
             <DialogHeader className="p-6 pb-2">
-              <DialogTitle className="text-2xl">{responsesModal.title}</DialogTitle>
-              <DialogDescription>Viewing raw student submissions for this form.</DialogDescription>
+              <DialogTitle className="text-2xl text-white">{responsesModal.title}</DialogTitle>
+              <DialogDescription className="text-text-muted">Viewing raw student submissions for this form.</DialogDescription>
             </DialogHeader>
             
             <ScrollArea className="flex-1 p-6 pt-2">
               {responsesModal.rows.length === 0 ? (
-                <div className="py-20 text-center text-slate-400">No responses recorded yet.</div>
+                <div className="py-20 text-center text-text-muted">No responses recorded yet.</div>
               ) : (
-                <div className="border rounded-xl overflow-hidden">
+                <div className="border border-white/10 rounded-xl overflow-hidden">
                   <Table>
-                    <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
-                      <TableRow>
-                        <TableHead className="font-bold whitespace-nowrap">Name</TableHead>
-                        <TableHead className="font-bold whitespace-nowrap">USN</TableHead>
+                    <TableHeader className="bg-white/5">
+                      <TableRow className="border-white/10">
+                        <TableHead className="font-bold whitespace-nowrap text-text-main">Name</TableHead>
+                        <TableHead className="font-bold whitespace-nowrap text-text-main">USN</TableHead>
                         {responsesModal.rows[0].answers.map(a => (
-                          <TableHead key={a.id} className="font-bold whitespace-nowrap">{a.questionText}</TableHead>
+                          <TableHead key={a.id} className="font-bold whitespace-nowrap text-text-main">{a.questionText}</TableHead>
                         ))}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {responsesModal.rows.map((r, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="font-medium whitespace-nowrap">{r.studentName}</TableCell>
-                          <TableCell className="font-mono text-xs whitespace-nowrap">{r.usn}</TableCell>
+                        <TableRow key={i} className="border-white/10 hover:bg-white/5">
+                          <TableCell className="font-medium whitespace-nowrap text-white">{r.studentName}</TableCell>
+                          <TableCell className="font-mono text-xs whitespace-nowrap text-text-muted">{r.usn}</TableCell>
                           {r.answers.map(a => (
-                            <TableCell key={a.id} className="text-slate-600 dark:text-slate-400 whitespace-nowrap">{a.answer ?? '—'}</TableCell>
+                            <TableCell key={a.id} className="text-text-muted whitespace-nowrap">{a.answer ?? '—'}</TableCell>
                           ))}
                         </TableRow>
                       ))}
@@ -693,10 +719,10 @@ export function AdminPanel() {
               )}
             </ScrollArea>
 
-            <DialogFooter className="p-6 bg-slate-50 dark:bg-slate-900 border-t">
-              <Button variant="ghost" onClick={() => setResponsesModal(null)}>Close</Button>
+            <DialogFooter className="p-6 bg-white/5 border-t border-white/10">
+              <Button variant="ghost" onClick={() => setResponsesModal(null)} className="text-white hover:bg-white/5">Close</Button>
               {responsesModal.rows.length > 0 && (
-                <Button onClick={() => void exportFormExcel(responsesModal.formId)} className="gap-2">
+                <Button onClick={() => void exportFormExcel(responsesModal.formId)} className="gap-2 bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20">
                   <Download className="w-4 h-4" /> Download Excel
                 </Button>
               )}

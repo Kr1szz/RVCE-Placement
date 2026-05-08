@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Send, MessageCircle, AlertCircle, Clock } from 'lucide-react'
+import { Send, MessageSquare, Clock, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function ChatPanel() {
@@ -38,7 +38,10 @@ export function ChatPanel() {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]')
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight
+      }
     }
   }, [messages])
 
@@ -58,105 +61,109 @@ export function ChatPanel() {
   }
 
   return (
-    <Card className="h-full flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-      <CardHeader className="py-4 border-b">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <MessageCircle className="w-5 h-5 text-primary" />
-          Global Discussion
-        </CardTitle>
-      </CardHeader>
-      
-      <CardContent className="flex-1 p-0 overflow-hidden relative">
-        {err ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-4">
-            <AlertCircle className="w-12 h-12 text-destructive opacity-50" />
-            <div className="space-y-1">
-              <p className="font-semibold text-slate-900 dark:text-slate-50">Connection Error</p>
-              <p className="text-sm text-slate-500">{err}</p>
+    <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-12rem)] pb-20 lg:pb-8">
+      <Card className="h-full border-white/10 bg-white/5 backdrop-blur-xl flex flex-col overflow-hidden">
+        <CardHeader className="pb-4 border-b border-white/10">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-primary" />
+            Global Discussion
+          </CardTitle>
+        </CardHeader>
+        
+        <CardContent className="flex-1 flex flex-col p-0 overflow-hidden relative">
+          {err ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-4">
+              <AlertCircle className="w-12 h-12 text-destructive opacity-50" />
+              <div className="space-y-1">
+                <p className="font-semibold text-white">Connection Error</p>
+                <p className="text-sm text-text-muted">{err}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void load()}>
+                Try Again
+              </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={() => void load()}>
-              Try Again
-            </Button>
-          </div>
-        ) : (
-          <ScrollArea className="h-full" ref={scrollRef}>
-            <div className="p-4 space-y-4">
-              {loading ? (
-                <div className="flex flex-col gap-4">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className={cn("max-w-[80%] space-y-1", i % 2 === 0 ? "ml-auto" : "")}>
-                      <div className="h-10 w-48 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+          ) : (
+            <>
+              <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                <div className="space-y-4">
+                  {loading ? (
+                    <div className="flex flex-col gap-4">
+                      {[1, 2, 3, 4].map(i => (
+                        <div key={i} className={cn("max-w-[80%] space-y-1", i % 2 === 0 ? "ml-auto" : "")}>
+                          <div className="h-10 w-48 bg-white/5 rounded-2xl animate-pulse" />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400">
-                  <Clock className="w-10 h-10 mb-2 opacity-20" />
-                  <p>No messages in the thread yet.</p>
-                </div>
-              ) : (
-                messages.map((m) => {
-                  const isMe = m.sender.id === session?.user.id
-                  return (
-                    <div
-                      key={m.id}
-                      className={cn(
-                        "flex flex-col max-w-[85%] space-y-1",
-                        isMe ? "ml-auto items-end" : "items-start"
-                      )}
-                    >
-                      <div className="flex items-center gap-2 px-1">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                          {isMe ? 'You' : m.sender.name}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <div
-                        className={cn(
-                          "px-4 py-2.5 rounded-2xl text-sm shadow-sm",
-                          isMe 
-                            ? "bg-primary text-primary-foreground rounded-tr-none" 
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-50 rounded-tl-none"
-                        )}
-                      >
-                        {m.messageText}
-                      </div>
+                  ) : messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full py-20 text-text-muted">
+                      <Clock className="w-10 h-10 mb-2 opacity-20" />
+                      <p>No messages in the thread yet.</p>
                     </div>
-                  )
-                })
-              )}
-            </div>
-          </ScrollArea>
-        )}
-      </CardContent>
-
-      <CardFooter className="p-4 border-t bg-slate-50/50 dark:bg-slate-900/50">
-        <form 
-          className="flex w-full gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void send()
-          }}
-        >
-          <Input
-            placeholder="Write a message..."
-            value={text}
-            disabled={sending || !!err}
-            onChange={(e) => setText(e.target.value)}
-            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-          />
-          <Button 
-            type="submit" 
-            size="icon" 
-            disabled={sending || !!err || !text.trim()}
-            className="shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </form>
-      </CardFooter>
-    </Card>
+                  ) : (
+                    messages.map((m) => {
+                      const isMe = m.sender.id === session?.user.id
+                      return (
+                        <div
+                          key={m.id}
+                          className={cn(
+                            "flex flex-col max-w-[85%] space-y-1",
+                            isMe ? "ml-auto items-end" : "items-start"
+                          )}
+                        >
+                          <div className="flex items-center gap-2 px-1">
+                            <span className="text-[10px] font-bold text-text-muted uppercase tracking-tight">
+                              {isMe ? 'You' : m.sender.name}
+                            </span>
+                            <span className="text-[10px] text-white/30">
+                              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div
+                            className={cn(
+                              "px-4 py-2.5 rounded-2xl text-sm shadow-lg",
+                              isMe 
+                                ? "bg-primary text-white rounded-tr-none shadow-primary/20" 
+                                : "bg-white/10 text-white rounded-tl-none shadow-black/20"
+                            )}
+                          >
+                            {m.messageText}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </ScrollArea>
+              
+              <div className="p-4 border-t border-white/10 bg-white/5">
+                <form 
+                  className="flex w-full gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void send()
+                  }}
+                >
+                  <Input
+                    placeholder="Write a message..."
+                    value={text}
+                    disabled={sending || !!err}
+                    onChange={(e) => setText(e.target.value)}
+                    className="bg-white/5 border-white/10 text-white focus:ring-primary/50"
+                  />
+                  <Button 
+                    type="submit" 
+                    size="icon" 
+                    disabled={sending || !!err || !text.trim()}
+                    className="shrink-0 shadow-lg shadow-primary/20"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </form>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
