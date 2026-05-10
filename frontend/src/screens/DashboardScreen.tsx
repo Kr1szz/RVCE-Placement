@@ -5,30 +5,32 @@ import { ChatPanel } from '../panels/ChatPanel'
 import { CompaniesPanel } from '../panels/CompaniesPanel'
 import { FormsPanel } from '../panels/FormsPanel'
 import { ProfilePanel } from '../panels/ProfilePanel'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { 
+  User, 
+  Building2, 
+  FileText, 
+  MessageSquare, 
+  Settings, 
+  LogOut,
+  Menu,
+  X,
+  GraduationCap
+} from 'lucide-react'
 
 type Panel = {
   id: string
   label: string
-  icon: string
+  icon: React.ReactNode
   element: React.ReactNode
 }
 
 export default function DashboardScreen() {
   const { session, logout } = useAuth()
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [wide, setWide] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(min-width: 980px)').matches,
-  )
-
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 980px)')
-    const fn = () => setWide(mq.matches)
-    fn()
-    mq.addEventListener('change', fn)
-    return () => mq.removeEventListener('change', fn)
-  }, [])
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const panels: Panel[] = useMemo(
     () => {
@@ -37,25 +39,25 @@ export default function DashboardScreen() {
         {
           id: 'profile',
           label: 'Profile',
-          icon: '🪪',
+          icon: <User className="w-5 h-5" />,
           element: <ProfilePanel />,
         },
         {
           id: 'companies',
           label: 'Companies',
-          icon: '🏢',
+          icon: <Building2 className="w-5 h-5" />,
           element: <CompaniesPanel />,
         },
         {
           id: 'forms',
           label: 'Forms',
-          icon: '📋',
+          icon: <FileText className="w-5 h-5" />,
           element: <FormsPanel />,
         },
         {
           id: 'chat',
           label: 'Chat',
-          icon: '💬',
+          icon: <MessageSquare className="w-5 h-5" />,
           element: <ChatPanel />,
         },
         ...(session.isSpc
@@ -63,7 +65,7 @@ export default function DashboardScreen() {
               {
                 id: 'admin',
                 label: 'SPC Admin',
-                icon: '⚙️',
+                icon: <Settings className="w-5 h-5" />,
                 element: <AdminPanel />,
               } satisfies Panel,
             ]
@@ -82,75 +84,147 @@ export default function DashboardScreen() {
   const safeIndex = Math.min(selectedIndex, panels.length - 1)
   const active = panels[safeIndex] ?? panels[0]
 
-  return (
-    <div className="plc-dash">
-      <div className={`plc-dash-inner ${wide ? 'plc-dash-wide' : 'plc-dash-narrow'}`}>
-        {wide ? (
-          <aside className="plc-side-rail">
-            <h2>Placement Desk</h2>
-            <p className="muted">
-              {session.isSpc
-                ? 'Student + SPC access'
-                : 'Student access'}
+  const Sidebar = ({ className = '' }: { className?: string }) => (
+    <aside className={`flex flex-col h-full ${className}`}>
+      <div className="p-6 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-primary/20">
+            <GraduationCap className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-white">Placement Desk</h2>
+            <p className="text-xs text-muted-foreground">
+              {session.isSpc ? 'Student + SPC' : 'Student Access'}
             </p>
-            <nav className="plc-rail-nav">
-              {panels.map((p, i) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={i === safeIndex ? 'is-active' : ''}
-                  onClick={() => setSelectedIndex(i)}
-                >
-                  <span aria-hidden>{p.icon}</span>
-                  {p.label}
-                </button>
-              ))}
-            </nav>
-            <button type="button" className="plc-btn-outline" onClick={logout}>
-              Logout
-            </button>
-          </aside>
-        ) : null}
+          </div>
+        </div>
+      </div>
 
-        <div className="plc-dash-main">
-          <header className="plc-header-bar">
+      <ScrollArea className="flex-1 p-4">
+        <nav className="space-y-1">
+          {panels.map((p, i) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                setSelectedIndex(i)
+                setIsMobileMenuOpen(false)
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                i === safeIndex
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                  : 'text-muted-foreground hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              {p.icon}
+              {p.label}
+            </button>
+          ))}
+        </nav>
+      </ScrollArea>
+
+      <div className="p-4 border-t border-white/10">
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-3"
+          onClick={logout}
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </Button>
+      </div>
+    </aside>
+  )
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex fixed left-0 top-0 bottom-0 w-72 z-40">
+        <Card className="w-full h-full rounded-none border-0 bg-white/5 backdrop-blur-xl border-r border-white/10">
+          <Sidebar />
+        </Card>
+      </div>
+
+      {/* Mobile Header */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-white/5 backdrop-blur-xl border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/20">
+            <GraduationCap className="w-5 h-5 text-primary" />
+          </div>
+          <span className="font-semibold text-white">RVCE Placement</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? (
+            <X className="w-5 h-5" />
+          ) : (
+            <Menu className="w-5 h-5" />
+          )}
+        </Button>
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}>
+          <div 
+            className="absolute right-0 top-0 bottom-0 w-72" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Card className="h-full rounded-none border-0 bg-slate-900 border-l border-white/10">
+              <Sidebar />
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="lg:ml-72">
+        <main className="min-h-screen pt-16 lg:pt-0">
+          {/* Desktop Header */}
+          <header className="hidden lg:flex items-center justify-between px-8 py-6 border-b border-white/10 bg-white/5 backdrop-blur-xl">
             <div>
-              <h1>
-                Welcome,{' '}
-                {session.user.name?.trim() ? session.user.name : 'Student'}
+              <h1 className="text-2xl font-semibold text-white">
+                Welcome, {session.user.name?.trim() || 'Student'}
               </h1>
-              <p>
+              <p className="mt-1 text-sm text-muted-foreground">
                 {session.isSpc
                   ? 'You can manage placement operations and still act as a student.'
                   : 'Keep your verified profile sharp and respond quickly to drives.'}
               </p>
             </div>
-            {wide ? (
-              <button type="button" className="plc-btn-outline" onClick={logout}>
-                Logout
-              </button>
-            ) : null}
+            <Button variant="outline" onClick={logout} className="gap-2">
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
           </header>
 
-          <div className="plc-panel-scroll">{active.element}</div>
-        </div>
+          <div className="p-4 lg:p-8">
+            {active.element}
+          </div>
+        </main>
       </div>
 
-      {!wide ? (
-        <nav className="plc-bottom-nav" aria-label="Primary">
-          {panels.map((p, i) => (
-            <button
-              key={p.id}
-              type="button"
-              className={i === safeIndex ? 'is-active' : ''}
-              onClick={() => setSelectedIndex(i)}
-            >
-              <div>{p.icon}</div>
-              {p.label}
-            </button>
-          ))}
-        </nav>
-      ) : null}
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 flex items-center justify-around px-2 py-2 bg-white/5 backdrop-blur-xl border-t border-white/10 safe-area-bottom">
+        {panels.map((p, i) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setSelectedIndex(i)}
+            className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
+              i === safeIndex
+                ? 'text-primary'
+                : 'text-muted-foreground'
+            }`}
+          >
+            {p.icon}
+            <span className="text-xs font-medium">{p.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }

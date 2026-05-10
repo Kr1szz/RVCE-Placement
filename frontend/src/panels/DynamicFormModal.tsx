@@ -2,6 +2,12 @@ import { useMemo, useState } from 'react'
 import type { PlacementFormDetail } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
 
 export function DynamicFormModal({
   detail,
@@ -68,79 +74,71 @@ export function DynamicFormModal({
   }
 
   return (
-    <div className="plc-modal-backdrop" role="presentation" onClick={onClose}>
-      <div
-        className="plc-modal-sheet"
-        role="dialog"
-        aria-labelledby="form-modal-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="form-modal-title" style={{ margin: '0 0 6px' }}>
-          {detail.summary.title}
-        </h2>
-        <p style={{ margin: '0 0 24px', opacity: 0.8 }}>
-          {detail.summary.type.toUpperCase()} •{' '}
-          {detail.summary.companyName ?? 'Global'}
-        </p>
-
-        {detail.questions.map((q) => (
-          <div key={q.id} style={{ marginBottom: 18 }}>
-            <div style={{ fontWeight: 600, marginBottom: 10 }}>
-              {q.questionText}
-              {q.isRequired ? ' *' : ''}
-            </div>
-            {q.fieldType === 'text' || q.fieldType === 'number' ? (
-              <input
-                className="plc-input"
-                style={{ marginTop: 0, background: '#fff' }}
-                type={q.fieldType === 'number' ? 'number' : 'text'}
-                value={values[q.id] ?? ''}
-                onChange={(e) => setVal(q.id, e.target.value)}
-              />
-            ) : q.fieldType === 'boolean' ? (
-              <select
-                className="plc-input"
-                style={{ marginTop: 0, background: '#fff' }}
-                value={values[q.id] ?? ''}
-                onChange={(e) => setVal(q.id, e.target.value)}
-              >
-                <option value="">Select…</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            ) : (
-              <select
-                className="plc-input"
-                style={{ marginTop: 0, background: '#fff' }}
-                value={values[q.id] ?? ''}
-                onChange={(e) => setVal(q.id, e.target.value)}
-              >
-                <option value="">Select…</option>
-                {q.options.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            )}
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <DialogTitle className="text-xl">{detail.summary.title}</DialogTitle>
+            <Badge variant="secondary">{detail.summary.type.toUpperCase()}</Badge>
           </div>
-        ))}
+          <DialogDescription>
+            {detail.summary.companyName ?? 'Global'}
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="plc-modal-actions">
-          <button type="button" className="plc-btn-outline" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="plc-btn plc-btn-primary"
-            style={{ width: 'auto', margin: 0 }}
-            disabled={saving}
-            onClick={() => void submit()}
-          >
-            Submit responses
-          </button>
+        <div className="space-y-6 py-4">
+          {detail.questions.map((q) => (
+            <div key={q.id} className="space-y-2">
+              <Label className="text-white">
+                {q.questionText}
+                {q.isRequired && <span className="text-red-400 ml-1">*</span>}
+              </Label>
+              {q.fieldType === 'text' || q.fieldType === 'number' ? (
+                <Input
+                  type={q.fieldType === 'number' ? 'number' : 'text'}
+                  value={values[q.id] ?? ''}
+                  onChange={(e) => setVal(q.id, e.target.value)}
+                  placeholder={`Enter ${q.questionText.toLowerCase()}`}
+                />
+              ) : q.fieldType === 'boolean' ? (
+                <Select
+                  value={values[q.id] ?? ''}
+                  onValueChange={(v) => setVal(q.id, v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Yes</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select
+                  value={values[q.id] ?? ''}
+                  onValueChange={(v) => setVal(q.id, v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {q.options.map((o) => (
+                      <SelectItem key={o} value={o}>{o}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          ))}
         </div>
-      </div>
-    </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => void submit()} disabled={saving}>
+            {saving ? 'Submitting...' : 'Submit responses'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

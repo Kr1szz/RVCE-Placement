@@ -8,8 +8,16 @@ import type {
 } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { ErrorState, FieldBox, SectionCard } from '../placement/components'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
 import { downloadBlob } from '../placement/format'
+import { Building2, FileQuestion, FileText, Users, Download, Send, CheckCircle, Plus } from 'lucide-react'
 
 const EXPORT_FIELDS: { key: string; label: string }[] = [
   { key: 'usn', label: 'USN' },
@@ -214,455 +222,392 @@ export function AdminPanel() {
 
   if (loading) {
     return (
-      <div className="plc-empty">
-        <div className="plc-splash-spinner" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     )
   }
 
   if (err || !data) {
-    return <ErrorState message={err ?? 'Failed to load admin data.'} onRetry={load} />
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <p className="text-red-400">{err ?? 'Failed to load admin data.'}</p>
+        <Button onClick={() => void load()}>Retry</Button>
+      </div>
+    )
   }
 
   return (
-    <div>
-      {exportCompanyId != null ? (
-        <div
-          className="plc-modal-backdrop"
-          role="presentation"
-          onClick={() => setExportCompanyId(null)}
-        >
-          <div
-            className="plc-dialog"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ marginTop: 0 }}>Select Columns to Export</h3>
-            <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-              Name, College Email, CGPA, Resume URL, and form questions are always
-              included on the backend.
-            </p>
-            <div className="plc-dialog-list">
-              {EXPORT_FIELDS.map((f) => (
-                <label key={f.key} style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="checkbox"
-                    checked={exportFields.has(f.key)}
-                    onChange={(e) => {
-                      setExportFields((prev) => {
-                        const n = new Set(prev)
-                        if (e.target.checked) n.add(f.key)
-                        else n.delete(f.key)
-                        return n
-                      })
-                    }}
-                  />
-                  {f.label}
-                </label>
-              ))}
-            </div>
-            <div className="plc-dialog-actions">
-              <button
-                type="button"
-                className="plc-btn-outline"
-                onClick={() => setExportCompanyId(null)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="plc-btn plc-btn-primary"
-                style={{ width: 'auto', margin: 0 }}
-                onClick={doExportCompany}
-              >
-                Export
-              </button>
-            </div>
+    <div className="space-y-6 pb-20 lg:pb-8">
+      {/* Export Fields Dialog */}
+      <Dialog open={exportCompanyId != null} onOpenChange={() => setExportCompanyId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Columns to Export</DialogTitle>
+            <DialogDescription>
+              Name, College Email, CGPA, Resume URL, and form questions are always included.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {EXPORT_FIELDS.map((f) => (
+              <div key={f.key} className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id={`exp-${f.key}`}
+                  checked={exportFields.has(f.key)}
+                  onChange={(e) => {
+                    setExportFields((prev) => {
+                      const n = new Set(prev)
+                      if (e.target.checked) n.add(f.key)
+                      else n.delete(f.key)
+                      return n
+                    })
+                  }}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5"
+                />
+                <Label htmlFor={`exp-${f.key}`}>{f.label}</Label>
+              </div>
+            ))}
           </div>
-        </div>
-      ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExportCompanyId(null)}>Cancel</Button>
+            <Button onClick={doExportCompany}>Export</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {responsesModal ? (
-        <div
-          className="plc-modal-backdrop"
-          role="presentation"
-          onClick={() => setResponsesModal(null)}
-        >
-          <div
-            className="plc-dialog"
-            style={{ maxWidth: 900 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ marginTop: 0 }}>{responsesModal.title}</h3>
-            {responsesModal.rows.length === 0 ? (
-              <p>No responses yet.</p>
-            ) : (
-              <div className="plc-table-wrap">
-                <table>
-                  <thead>
+      {/* Responses Modal */}
+      <Dialog open={responsesModal != null} onOpenChange={() => setResponsesModal(null)}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>{responsesModal?.title}</DialogTitle>
+          </DialogHeader>
+          {responsesModal?.rows.length === 0 ? (
+            <p className="text-muted-foreground py-8 text-center">No responses yet.</p>
+          ) : (
+            <ScrollArea className="h-[400px]">
+              <div className="overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-slate-800">
                     <tr>
-                      <th>Name</th>
-                      <th>USN</th>
-                      <th>Email</th>
-                      {responsesModal.rows[0].answers.map((a) => (
-                        <th key={a.id}>{a.questionText}</th>
+                      <th className="text-left p-2 border border-white/10">Name</th>
+                      <th className="text-left p-2 border border-white/10">USN</th>
+                      <th className="text-left p-2 border border-white/10">Email</th>
+                      {responsesModal?.rows[0].answers.map((a) => (
+                        <th key={a.id} className="text-left p-2 border border-white/10">{a.questionText}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {responsesModal.rows.map((r, i) => (
+                    {responsesModal?.rows.map((r, i) => (
                       <tr key={i}>
-                        <td>{r.studentName}</td>
-                        <td>{r.usn}</td>
-                        <td>{r.collegeEmailId}</td>
+                        <td className="p-2 border border-white/10">{r.studentName}</td>
+                        <td className="p-2 border border-white/10">{r.usn}</td>
+                        <td className="p-2 border border-white/10">{r.collegeEmailId}</td>
                         {r.answers.map((a) => (
-                          <td key={a.id}>{a.answer ?? '—'}</td>
+                          <td key={a.id} className="p-2 border border-white/10">{a.answer ?? '—'}</td>
                         ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+            </ScrollArea>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResponsesModal(null)}>Close</Button>
+            {responsesModal && responsesModal.rows.length > 0 && (
+              <Button onClick={() => void exportFormExcel(responsesModal.formId)} className="gap-2">
+                <Download className="w-4 h-4" />
+                Download Excel
+              </Button>
             )}
-            <div className="plc-dialog-actions">
-              <button
-                type="button"
-                className="plc-btn-outline"
-                onClick={() => setResponsesModal(null)}
-              >
-                Close
-              </button>
-              {responsesModal.rows.length > 0 ? (
-                <button
-                  type="button"
-                  className="plc-btn plc-btn-primary"
-                  style={{ width: 'auto', margin: 0 }}
-                  onClick={() => void exportFormExcel(responsesModal.formId)}
-                >
-                  Download Excel
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <SectionCard
-        title="Create Company"
-        subtitle="Use ISO dates like 2026-06-12 to stay aligned with the backend."
-        footer={
-          <div style={{ textAlign: 'right' }}>
-            <button
-              type="button"
-              className="plc-btn plc-btn-primary"
-              style={{ width: 'auto', margin: 0 }}
-              disabled={busy}
-              onClick={() => void createCompany()}
+      {/* Create Company */}
+      <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-primary" />
+            Create Company
+          </CardTitle>
+          <CardDescription className="text-white/60">
+            Use ISO dates like 2026-06-12 to stay aligned with the backend.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Input placeholder="Company name" value={cName} onChange={(e) => setCName(e.target.value)} />
+            <Input placeholder="Min CGPA" type="number" value={cCgpa} onChange={(e) => setCCgpa(e.target.value)} />
+            <Input placeholder="Package" value={cPkg} onChange={(e) => setCPkg(e.target.value)} />
+            <Input placeholder="Stipend" value={cStip} onChange={(e) => setCStip(e.target.value)} />
+            <Input placeholder="Test date (YYYY-MM-DD)" value={cTest} onChange={(e) => setCTest(e.target.value)} />
+            <Input placeholder="Interview date (YYYY-MM-DD)" value={cInt} onChange={(e) => setCInt(e.target.value)} />
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => void createCompany()} disabled={busy} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Create Company
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Question Bank */}
+      <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileQuestion className="w-5 h-5 text-primary" />
+            Question Bank
+          </CardTitle>
+          <CardDescription className="text-white/60">
+            Dropdown options are stored without changing the schema.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Input 
+              placeholder="Question text" 
+              value={qText} 
+              onChange={(e) => setQText(e.target.value)}
+              className="sm:col-span-1 lg:col-span-2"
+            />
+            <Select value={qType} onValueChange={(v) => setQType(v as typeof qType)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Field type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">text</SelectItem>
+                <SelectItem value="number">number</SelectItem>
+                <SelectItem value="boolean">boolean</SelectItem>
+                <SelectItem value="dropdown">dropdown</SelectItem>
+              </SelectContent>
+            </Select>
+            {qType === 'dropdown' && (
+              <Input 
+                placeholder="Options (comma separated)" 
+                value={qOpts} 
+                onChange={(e) => setQOpts(e.target.value)}
+                className="sm:col-span-2 lg:col-span-3"
+              />
+            )}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => void createQuestion()} disabled={busy} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Create Question
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Create and Send Forms */}
+      <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-primary" />
+            Create and Send Forms
+          </CardTitle>
+          <CardDescription className="text-white/60">
+            Create a form, map reusable questions, then send a push notification.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Input placeholder="Form title" value={fTitle} onChange={(e) => setFTitle(e.target.value)} />
+            <Select value={fType} onValueChange={(v) => setFType(v as typeof fType)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Form type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="consent">consent</SelectItem>
+                <SelectItem value="tracker">tracker</SelectItem>
+                <SelectItem value="custom">custom</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select 
+              value={fCompanyId != null ? String(fCompanyId) : ''} 
+              onValueChange={(v) => setFCompanyId(v === '' ? null : Number(v))}
             >
-              Create company
-            </button>
-          </div>
-        }
-      >
-        <div className="plc-form-grid">
-          <FieldBox width={220}>
-            <div className="plc-label-input">
-              <label>Company name</label>
-              <input value={cName} onChange={(e) => setCName(e.target.value)} />
-            </div>
-          </FieldBox>
-          <FieldBox width={140}>
-            <div className="plc-label-input">
-              <label>Min CGPA</label>
-              <input value={cCgpa} onChange={(e) => setCCgpa(e.target.value)} />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label>Package</label>
-              <input value={cPkg} onChange={(e) => setCPkg(e.target.value)} />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label>Stipend</label>
-              <input value={cStip} onChange={(e) => setCStip(e.target.value)} />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label>Test date</label>
-              <input value={cTest} onChange={(e) => setCTest(e.target.value)} />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label>Interview date</label>
-              <input value={cInt} onChange={(e) => setCInt(e.target.value)} />
-            </div>
-          </FieldBox>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title="Question Bank"
-        subtitle="Dropdown options are stored without changing the schema."
-        footer={
-          <div style={{ textAlign: 'right' }}>
-            <button
-              type="button"
-              className="plc-btn plc-btn-primary"
-              style={{ width: 'auto', margin: 0 }}
-              disabled={busy}
-              onClick={() => void createQuestion()}
-            >
-              Create question
-            </button>
-          </div>
-        }
-      >
-        <div className="plc-form-grid">
-          <FieldBox width={340}>
-            <div className="plc-label-input">
-              <label>Question text</label>
-              <input value={qText} onChange={(e) => setQText(e.target.value)} />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label>Field type</label>
-              <select
-                value={qType}
-                onChange={(e) =>
-                  setQType(e.target.value as typeof qType)
-                }
-              >
-                <option value="text">text</option>
-                <option value="number">number</option>
-                <option value="boolean">boolean</option>
-                <option value="dropdown">dropdown</option>
-              </select>
-            </div>
-          </FieldBox>
-          {qType === 'dropdown' ? (
-            <FieldBox width={300}>
-              <div className="plc-label-input">
-                <label>Options (comma separated)</label>
-                <input value={qOpts} onChange={(e) => setQOpts(e.target.value)} />
-              </div>
-            </FieldBox>
-          ) : null}
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title="Create and Send Forms"
-        subtitle="Create a form, map reusable questions, then send a push notification."
-      >
-        <div className="plc-form-grid">
-          <FieldBox width={260}>
-            <div className="plc-label-input">
-              <label>Form title</label>
-              <input value={fTitle} onChange={(e) => setFTitle(e.target.value)} />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label>Form type</label>
-              <select
-                value={fType}
-                onChange={(e) =>
-                  setFType(e.target.value as typeof fType)
-                }
-              >
-                <option value="consent">consent</option>
-                <option value="tracker">tracker</option>
-                <option value="custom">custom</option>
-              </select>
-            </div>
-          </FieldBox>
-          <FieldBox width={240}>
-            <div className="plc-label-input">
-              <label>Linked company</label>
-              <select
-                value={fCompanyId ?? ''}
-                onChange={(e) =>
-                  setFCompanyId(
-                    e.target.value === '' ? null : Number(e.target.value),
-                  )
-                }
-              >
-                <option value="">Global</option>
+              <SelectTrigger>
+                <SelectValue placeholder="Linked company" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Global</SelectItem>
                 {data.companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                 ))}
-              </select>
-            </div>
-          </FieldBox>
-        </div>
-        <div style={{ textAlign: 'right', marginTop: 16 }}>
-          <button
-            type="button"
-            className="plc-btn plc-btn-primary"
-            style={{ width: 'auto', margin: 0 }}
-            disabled={busy}
-            onClick={() => void createForm()}
-          >
-            Create form
-          </button>
-        </div>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => void createForm()} disabled={busy} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Create Form
+            </Button>
+          </div>
 
-        <div className="plc-form-grid" style={{ marginTop: 24 }}>
-          <FieldBox width={260}>
-            <div className="plc-label-input">
-              <label>Form to map</label>
-              <select
-                value={mapFormId ?? ''}
-                onChange={(e) =>
-                  setMapFormId(
-                    e.target.value === '' ? null : Number(e.target.value),
-                  )
-                }
-              >
-                <option value="">Select a form</option>
+          <Separator className="bg-white/10" />
+
+          <div>
+            <h4 className="text-sm font-medium mb-4">Map Questions to Form</h4>
+            <div className="mb-4">
+            <Select 
+              value={mapFormId != null ? String(mapFormId) : ''} 
+              onValueChange={(v) => setMapFormId(v === '' ? null : Number(v))}
+            >
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue placeholder="Select a form" />
+              </SelectTrigger>
+              <SelectContent>
                 {data.forms.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.title}
-                  </option>
+                  <SelectItem key={f.id} value={String(f.id)}>{f.title}</SelectItem>
                 ))}
-              </select>
+              </SelectContent>
+            </Select>
             </div>
-          </FieldBox>
-        </div>
 
-        <div className="plc-form-grid" style={{ marginTop: 18 }}>
-          {data.questions.map((q) => (
-            <div key={q.id} className="plc-admin-q">
-              <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  type="checkbox"
-                  checked={mapped[q.id] ?? false}
-                  disabled={busy}
-                  onChange={(e) =>
-                    setMapped((m) => ({ ...m, [q.id]: e.target.checked }))
-                  }
-                />
-                <span>
-                  <strong>{q.questionText}</strong>
-                  <span style={{ display: 'block', fontSize: '0.8rem' }}>
-                    {q.fieldType}
-                  </span>
-                </span>
-              </label>
-              <label
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  alignItems: 'center',
-                  marginTop: 8,
-                  opacity: mapped[q.id] ? 1 : 0.45,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  disabled={busy || !mapped[q.id]}
-                  checked={required.has(q.id)}
-                  onChange={(e) => {
-                    setRequired((prev) => {
-                      const n = new Set(prev)
-                      if (e.target.checked) n.add(q.id)
-                      else n.delete(q.id)
-                      return n
-                    })
-                  }}
-                />
-                Required
-              </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {data.questions.map((q) => (
+                <div key={q.id} className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={mapped[q.id] ?? false}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setMapped((m) => ({ ...m, [q.id]: e.target.checked }))
+                      }
+                      className="mt-1 w-4 h-4 rounded border-white/20 bg-white/5"
+                    />
+                    <div className="flex-1">
+                      <p className="font-medium text-white">{q.questionText}</p>
+                      <p className="text-xs text-muted-foreground">{q.fieldType}</p>
+                      {mapped[q.id] && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            disabled={busy || !mapped[q.id]}
+                            checked={required.has(q.id)}
+                            onChange={(e) => {
+                              setRequired((prev) => {
+                                const n = new Set(prev)
+                                if (e.target.checked) n.add(q.id)
+                                else n.delete(q.id)
+                                return n
+                              })
+                            }}
+                            className="w-4 h-4 rounded border-white/20 bg-white/5"
+                          />
+                          <span className="text-sm text-muted-foreground">Required</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="plc-form-grid" style={{ marginTop: 16 }}>
-          <button
-            type="button"
-            className="plc-btn plc-btn-primary"
-            style={{ width: 'auto', margin: 0 }}
-            disabled={busy}
-            onClick={() => void saveMapping()}
-          >
-            Save mapping
-          </button>
-          <button
-            type="button"
-            className="plc-btn-outline"
-            disabled={busy}
-            onClick={() => void sendForm()}
-          >
-            Send notification
-          </button>
-        </div>
-      </SectionCard>
 
-      <SectionCard
-        title="Students"
-        subtitle="Verify profiles to lock student edits."
-      >
-        <div className="plc-form-grid">
-          {data.students.map((s) => (
-            <div key={s.id} className="plc-student-card">
-              <div style={{ fontWeight: 700 }}>{s.name}</div>
-              <div style={{ fontSize: '0.9rem', marginTop: 4 }}>
-                {s.collegeEmailId}
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button onClick={() => void saveMapping()} disabled={busy} className="gap-2">
+                Save Mapping
+              </Button>
+              <Button variant="outline" onClick={() => void sendForm()} disabled={busy} className="gap-2">
+                <Send className="w-4 h-4" />
+                Send Notification
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Students */}
+      <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            Students
+          </CardTitle>
+          <CardDescription className="text-white/60">
+            Verify profiles to lock student edits.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {data.students.map((s) => (
+              <div key={s.id} className="p-4 rounded-xl bg-white/5 border border-white/10">
+                <p className="font-semibold text-white">{s.name}</p>
+                <p className="text-sm text-muted-foreground mt-1">{s.collegeEmailId}</p>
+                <Button
+                  variant={s.verified ? 'secondary' : 'default'}
+                  size="sm"
+                  className="mt-3"
+                  disabled={s.verified || busy}
+                  onClick={() => void verifyStudent(s.id)}
+                >
+                  {s.verified ? (
+                    <><CheckCircle className="w-4 h-4 mr-1" /> Verified</>
+                  ) : (
+                    'Verify'
+                  )}
+                </Button>
               </div>
-              <button
-                type="button"
-                className="plc-btn-tonal"
-                style={{ marginTop: 10 }}
-                disabled={s.verified || busy}
-                onClick={() => void verifyStudent(s.id)}
-              >
-                {s.verified ? 'Verified' : 'Verify'}
-              </button>
-            </div>
-          ))}
-        </div>
-      </SectionCard>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-      <SectionCard
-        title="Exports and Responses"
-        subtitle="Use the backend export endpoint and inspect responses per form."
-      >
-        <h4 style={{ margin: '0 0 12px' }}>Companies</h4>
-        <div className="plc-form-grid">
-          {data.companies.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className="plc-btn-outline"
-              disabled={busy}
-              onClick={() => {
-                setExportFields(new Set(EXPORT_FIELDS.map((f) => f.key)))
-                setExportCompanyId(c.id)
-              }}
-            >
-              ⬇ {c.name}
-            </button>
-          ))}
-        </div>
-        <h4 style={{ margin: '24px 0 12px' }}>Forms</h4>
-        <div className="plc-form-grid">
-          {data.forms.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className="plc-btn-outline"
-              onClick={() => void openResponses(f.id, f.title)}
-            >
-              👁 {f.title}
-            </button>
-          ))}
-        </div>
-      </SectionCard>
+      {/* Exports and Responses */}
+      <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="w-5 h-5 text-primary" />
+            Exports and Responses
+          </CardTitle>
+          <CardDescription className="text-white/60">
+            Use the backend export endpoint and inspect responses per form.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <h4 className="text-sm font-medium mb-3">Companies</h4>
+            <div className="flex flex-wrap gap-2">
+              {data.companies.map((c) => (
+                <Button
+                  key={c.id}
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    setExportFields(new Set(EXPORT_FIELDS.map((f) => f.key)))
+                    setExportCompanyId(c.id)
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5 mr-1" />
+                  {c.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium mb-3">Forms</h4>
+            <div className="flex flex-wrap gap-2">
+              {data.forms.map((f) => (
+                <Button
+                  key={f.id}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void openResponses(f.id, f.title)}
+                >
+                  {f.title}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

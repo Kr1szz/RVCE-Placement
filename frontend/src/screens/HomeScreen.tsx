@@ -2,6 +2,11 @@ import { GoogleLogin } from '@react-oauth/google'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card'
+import { School } from 'lucide-react'
+
 export default function HomeScreen() {
   const { loginWithSpc, loginWithGoogle, errorMessage, clearError, status } =
     useAuth()
@@ -20,102 +25,115 @@ export default function HomeScreen() {
   const isBusy = status === 'loading'
 
   return (
-    <div className="plc-login-page">
+    <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div
-        className="plc-decor-circle"
-        style={{ width: 260, height: 260, top: -100, right: -70 }}
+        className="absolute rounded-full blur-3xl opacity-40"
+        style={{ width: 320, height: 320, top: -120, right: -80, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
       />
       <div
-        className="plc-decor-circle"
-        style={{ width: 240, height: 240, bottom: -90, left: -50 }}
+        className="absolute rounded-full blur-3xl opacity-30"
+        style={{ width: 280, height: 280, bottom: -100, left: -60, background: 'linear-gradient(135deg, #ec4899, #f43f5e)' }}
       />
 
-      <div className="plc-login-inner">
-        <div className="plc-login-stack">
-          <div style={{ textAlign: 'center' }}>
-            <div className="plc-header-badge">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
-              </svg>
-              <span>RV College of Engineering</span>
-            </div>
-            <h1 className="plc-login-title">Placement</h1>
+      <div className="relative z-10 w-full max-w-md px-4">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center gap-3 px-5 py-3 mb-6 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
+            <School className="w-6 h-6 text-primary" />
+            <span className="text-sm font-medium text-white">RV College of Engineering</span>
           </div>
+          <h1 className="text-4xl font-bold text-white tracking-tight">Placement Portal</h1>
+          <p className="mt-2 text-muted-foreground">Your gateway to career opportunities</p>
+        </div>
 
-          <div className="plc-login-card">
-            <div className="plc-role-toggle">
+        <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
+          <CardHeader className="space-y-4 text-center">
+            <div className="flex justify-center gap-2 p-1 rounded-xl bg-white/5">
               <button
                 type="button"
-                className={!isSpc ? 'is-active' : ''}
                 onClick={() => setIsSpc(false)}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  !isSpc 
+                    ? 'bg-primary text-white shadow-lg shadow-primary/25' 
+                    : 'text-muted-foreground hover:text-white'
+                }`}
               >
                 Student
               </button>
               <button
                 type="button"
-                className={isSpc ? 'is-active' : ''}
                 onClick={() => setIsSpc(true)}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isSpc 
+                    ? 'bg-primary text-white shadow-lg shadow-primary/25' 
+                    : 'text-muted-foreground hover:text-white'
+                }`}
               >
                 SPC
               </button>
             </div>
-
+            <CardDescription className="text-white/60">
+              {isSpc 
+                ? 'Sign in with your SPC credentials' 
+                : 'Sign in with your RVCE Google account'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             {!isSpc ? (
-              <>
-                <p className="plc-login-hint">
-                  Sign in with your RVCE Google account.
-                </p>
-                <div className="plc-google-wrap">
-                  <GoogleLogin
-                    onSuccess={(cred) => {
-                      if (cred.credential) void loginWithGoogle(cred.credential)
-                    }}
-                    onError={() => showToast('Google sign-in failed.')}
-                    useOneTap={false}
-                    theme="filled_blue"
-                    size="large"
-                    text="continue_with"
-                    shape="rectangular"
-                    width="100%"
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={(cred) => {
+                    if (cred.credential) void loginWithGoogle(cred.credential)
+                  }}
+                  onError={() => showToast('Google sign-in failed.')}
+                  useOneTap={false}
+                  theme="filled_blue"
+                  size="large"
+                  text="continue_with"
+                  shape="rectangular"
+                  width="100%"
+                />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Input
+                    placeholder="Username"
+                    value={username}
+                    disabled={isBusy}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
                   />
                 </div>
-              </>
-            ) : (
-              <>
-                <input
-                  className="plc-input"
-                  placeholder="Username"
-                  value={username}
-                  disabled={isBusy}
-                  onChange={(e) => setUsername(e.target.value)}
-                  autoComplete="username"
-                />
-                <input
-                  className="plc-input"
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  disabled={isBusy}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isBusy) {
-                      void loginWithSpc(username.trim(), password)
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  className="plc-btn plc-btn-primary"
+                <div>
+                  <Input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    disabled={isBusy}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isBusy) {
+                        void loginWithSpc(username.trim(), password)
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  className="w-full"
                   disabled={isBusy}
                   onClick={() => void loginWithSpc(username.trim(), password)}
                 >
-                  Sign in
-                </button>
-              </>
+                  {isBusy ? 'Signing in...' : 'Sign in'}
+                </Button>
+              </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          RVCE MCA Placement Management System
+        </p>
       </div>
     </div>
   )

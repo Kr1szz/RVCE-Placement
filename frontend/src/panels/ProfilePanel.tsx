@@ -2,7 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import type { AppUser } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { ErrorState, FieldBox, SectionCard } from '../placement/components'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { CheckCircle, Clock, Upload } from 'lucide-react'
 
 export function ProfilePanel() {
   const { repo } = useAuth()
@@ -104,198 +108,118 @@ export function ProfilePanel() {
 
   if (loading) {
     return (
-      <div className="plc-empty">
-        <div className="plc-splash-spinner" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     )
   }
 
   if (err || !user) {
-    return <ErrorState message={err ?? 'Failed to load profile.'} onRetry={load} />
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <p className="text-red-400">{err ?? 'Failed to load profile.'}</p>
+        <Button onClick={() => void load()}>Retry</Button>
+      </div>
+    )
   }
 
-  return (
-    <div>
-      <SectionCard
-        title="Profile Status"
-        subtitle={
-          user.verified
-            ? 'Your profile has been verified by SPC and is now read-only.'
-            : 'Complete the profile once and upload your latest resume before verification.'
-        }
-        action={
-          <div className="plc-row-actions">
-            <span className="plc-chip">
-              {user.verified ? '✓ Verified' : '⏳ Awaiting verification'}
-            </span>
-            <button
-              type="button"
-              className="plc-btn-outline"
-              disabled={readOnly}
-              onClick={uploadResume}
-            >
-              {user.resumeUrl == null ? 'Upload Resume' : 'Replace Resume'}
-            </button>
-          </div>
-        }
-      >
-        {user.resumeUrl != null ? (
-          <p style={{ margin: 0 }}>Resume: {user.resumeUrl}</p>
-        ) : null}
-      </SectionCard>
+  const FormField = ({ label, value, onChange, id, type = 'text', disabled = false }: {
+    label: string
+    value: string
+    onChange: (v: string) => void
+    id: string
+    type?: string
+    disabled?: boolean
+  }) => (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-muted-foreground">{label}</label>
+      <Input
+        id={id}
+        type={type}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  )
 
-      <SectionCard
-        title="Academic Profile"
-        subtitle="This data powers eligibility checks and company exports."
-        footer={
-          <div style={{ textAlign: 'right' }}>
-            <button
-              type="button"
-              className="plc-btn plc-btn-primary"
-              style={{ width: 'auto', margin: 0 }}
+  return (
+    <div className="space-y-6 pb-20 lg:pb-8">
+      <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+              <CardTitle className="text-xl">Profile Status</CardTitle>
+              <CardDescription className="text-white/60 mt-1">
+                {user.verified
+                  ? 'Your profile has been verified by SPC and is now read-only.'
+                  : 'Complete the profile once and upload your latest resume before verification.'}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant={user.verified ? 'success' : 'warning'} className="gap-1.5">
+                {user.verified ? (
+                  <CheckCircle className="w-3.5 h-3.5" />
+                ) : (
+                  <Clock className="w-3.5 h-3.5" />
+                )}
+                {user.verified ? 'Verified' : 'Awaiting verification'}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={readOnly}
+                onClick={uploadResume}
+                className="gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                {user.resumeUrl == null ? 'Upload Resume' : 'Replace'}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        {user.resumeUrl != null && (
+          <CardContent className="pt-0">
+            <p className="text-sm text-muted-foreground">
+              Resume: <span className="text-white">{user.resumeUrl}</span>
+            </p>
+          </CardContent>
+        )}
+      </Card>
+
+      <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl">Academic Profile</CardTitle>
+          <CardDescription className="text-white/60">
+            This data powers eligibility checks and company exports.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <FormField label="Name" value={name} onChange={setName} id="pf-name" disabled={readOnly} />
+            <FormField label="USN" value={usn} onChange={setUsn} id="pf-usn" disabled={readOnly} />
+            <FormField label="College Email" value={collegeEmail} onChange={setCollegeEmail} id="pf-ce" disabled={readOnly} />
+            <FormField label="Personal Email" value={personalEmail} onChange={setPersonalEmail} id="pf-pe" disabled={readOnly} />
+            <FormField label="Phone Number" value={phone} onChange={setPhone} id="pf-phone" disabled={readOnly} />
+            <FormField label="Aadhar" value={aadhar} onChange={setAadhar} id="pf-aadhar" disabled={readOnly} />
+            <FormField label="LinkedIn URL" value={linkedIn} onChange={setLinkedIn} id="pf-li" disabled={readOnly} />
+            <FormField label="GitHub URL" value={gitHub} onChange={setGitHub} id="pf-gh" disabled={readOnly} />
+            <FormField label="UG CGPA" value={cgpa} onChange={setCgpa} id="pf-cgpa" type="number" disabled={readOnly} />
+            <FormField label="1st Sem SGPA" value={firstSem} onChange={setFirstSem} id="pf-fs" type="number" disabled={readOnly} />
+            <FormField label="10th Marks" value={tenth} onChange={setTenth} id="pf-10" type="number" disabled={readOnly} />
+            <FormField label="12th Marks" value={twelfth} onChange={setTwelfth} id="pf-12" type="number" disabled={readOnly} />
+          </div>
+          <div className="mt-6 flex justify-end">
+            <Button
               disabled={readOnly}
               onClick={() => void save()}
+              className="gap-2"
             >
-              Save profile
-            </button>
+              {saving ? 'Saving...' : 'Save Profile'}
+            </Button>
           </div>
-        }
-      >
-        <div className="plc-form-grid">
-          <FieldBox width={260}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-name">Name</label>
-              <input
-                id="pf-name"
-                value={name}
-                disabled={readOnly}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={220}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-usn">USN</label>
-              <input
-                id="pf-usn"
-                value={usn}
-                disabled={readOnly}
-                onChange={(e) => setUsn(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={280}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-ce">College email</label>
-              <input
-                id="pf-ce"
-                value={collegeEmail}
-                disabled={readOnly}
-                onChange={(e) => setCollegeEmail(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={280}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-pe">Personal email</label>
-              <input
-                id="pf-pe"
-                value={personalEmail}
-                disabled={readOnly}
-                onChange={(e) => setPersonalEmail(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={220}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-phone">Phone number</label>
-              <input
-                id="pf-phone"
-                value={phone}
-                disabled={readOnly}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={220}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-aadhar">Aadhar</label>
-              <input
-                id="pf-aadhar"
-                value={aadhar}
-                disabled={readOnly}
-                onChange={(e) => setAadhar(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={280}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-li">LinkedIn URL</label>
-              <input
-                id="pf-li"
-                value={linkedIn}
-                disabled={readOnly}
-                onChange={(e) => setLinkedIn(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={280}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-gh">GitHub URL</label>
-              <input
-                id="pf-gh"
-                value={gitHub}
-                disabled={readOnly}
-                onChange={(e) => setGitHub(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-cgpa">UG CGPA</label>
-              <input
-                id="pf-cgpa"
-                value={cgpa}
-                disabled={readOnly}
-                onChange={(e) => setCgpa(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-fs">1st sem SGPA</label>
-              <input
-                id="pf-fs"
-                value={firstSem}
-                disabled={readOnly}
-                onChange={(e) => setFirstSem(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-10">10th marks</label>
-              <input
-                id="pf-10"
-                value={tenth}
-                disabled={readOnly}
-                onChange={(e) => setTenth(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-          <FieldBox width={180}>
-            <div className="plc-label-input">
-              <label htmlFor="pf-12">12th marks</label>
-              <input
-                id="pf-12"
-                value={twelfth}
-                disabled={readOnly}
-                onChange={(e) => setTwelfth(e.target.value)}
-              />
-            </div>
-          </FieldBox>
-        </div>
-      </SectionCard>
+        </CardContent>
+      </Card>
     </div>
   )
 }

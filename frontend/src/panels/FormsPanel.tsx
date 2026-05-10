@@ -2,13 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import type { PlacementFormDetail, PlacementFormSummary } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import {
-  EmptyState,
-  ErrorState,
-  InfoPill,
-  SectionCard,
-} from '../placement/components'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { DynamicFormModal } from './DynamicFormModal'
+import { FileText, Users, HelpCircle } from 'lucide-react'
 
 export function FormsPanel() {
   const { repo } = useAuth()
@@ -46,27 +43,39 @@ export function FormsPanel() {
 
   if (loading) {
     return (
-      <div className="plc-empty">
-        <div className="plc-splash-spinner" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     )
   }
 
   if (err || !forms) {
-    return <ErrorState message={err ?? 'Failed to load forms.'} onRetry={load} />
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <p className="text-red-400">{err ?? 'Failed to load forms.'}</p>
+        <Button onClick={() => void load()}>Retry</Button>
+      </div>
+    )
   }
 
   if (forms.length === 0) {
     return (
-      <EmptyState
-        title="No forms yet"
-        subtitle="SPC-created forms will appear here as soon as they are shared."
-      />
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 text-center">
+        <div className="p-4 rounded-full bg-white/5">
+          <FileText className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-white">No forms yet</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            SPC-created forms will appear here as soon as they are shared.
+          </p>
+        </div>
+      </div>
     )
   }
 
   return (
-    <div>
+    <div className="space-y-6 pb-20 lg:pb-8">
       {detail ? (
         <DynamicFormModal
           detail={detail}
@@ -75,26 +84,40 @@ export function FormsPanel() {
         />
       ) : null}
       {forms.map((f) => (
-        <SectionCard
-          key={f.id}
-          title={f.title}
-          subtitle={`${f.type.toUpperCase()} | ${f.companyName ?? 'Global'}`}
-          action={
-            <button
-              type="button"
-              className="plc-btn plc-btn-primary"
-              style={{ width: 'auto', margin: 0 }}
-              onClick={() => void openForm(f)}
-            >
-              {(f.responseCount ?? 0) > 0 ? 'Edit' : 'Fill'}
-            </button>
-          }
-        >
-          <div className="plc-form-grid">
-            <InfoPill label="Questions" value={`${f.questionCount ?? 0}`} />
-            <InfoPill label="Responses" value={`${f.responseCount ?? 0}`} />
-          </div>
-        </SectionCard>
+        <Card key={f.id} className="border-white/10 bg-white/5 backdrop-blur-xl">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div>
+                <CardTitle className="text-xl">{f.title}</CardTitle>
+                <CardDescription className="text-white/60 mt-1">
+                  {f.type.toUpperCase()} • {f.companyName ?? 'Global'}
+                </CardDescription>
+              </div>
+              <Button
+                onClick={() => void openForm(f)}
+                className="shrink-0"
+              >
+                {(f.responseCount ?? 0) > 0 ? 'Edit' : 'Fill'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-6">
+              <div className="flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {f.questionCount ?? 0} Questions
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {f.responseCount ?? 0} Responses
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
   )
