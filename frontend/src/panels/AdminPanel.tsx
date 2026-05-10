@@ -11,6 +11,7 @@ import { useToast } from '../context/ToastContext'
 import { downloadBlob, formatDate } from '../lib/format'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { 
@@ -49,7 +50,8 @@ import {
   Building2,
   FileQuestion,
   FileText,
-  Users
+  Users,
+  Unlock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -113,6 +115,16 @@ export function AdminPanel() {
     title: string
     rows: FormResponseRecord[]
   } | null>(null)
+
+  // Pending Modal
+  const [pendingModal, setPendingModal] = useState<{
+    formId: number
+    title: string
+    students: StudentSummary[]
+  } | null>(null)
+
+  // Forms view toggle
+  const [showAllForms, setShowAllForms] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -209,6 +221,17 @@ export function AdminPanel() {
       await repo.verifyStudent(id)
     }, 'Student verified.')
 
+  const approveUnlock = (id: number) =>
+    run(async () => {
+      await repo.approveProfileUnlock(id)
+    }, 'Unlock request approved. Profile is now unverified.')
+
+  const toggleCompanyStatus = (companyId: number, currentStatus: string | undefined) =>
+    run(async () => {
+      const newStatus = currentStatus === 'completed' ? 'ongoing' : 'completed'
+      await repo.updateCompanyStatus(companyId, newStatus)
+    }, 'Company status updated.')
+
   const doExportCompany = () => {
     if (exportCompanyId == null) return
     const id = exportCompanyId
@@ -224,6 +247,15 @@ export function AdminPanel() {
     try {
       const rows = await repo.getFormResponses(formId)
       setResponsesModal({ formId, title, rows })
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  const openPending = async (formId: number, title: string) => {
+    try {
+      const students = await repo.getPendingStudents(formId)
+      setPendingModal({ formId, title, students })
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e))
     }
@@ -401,6 +433,7 @@ export function AdminPanel() {
                       <TableHead className="text-text-main font-bold">Package</TableHead>
                       <TableHead className="text-text-main font-bold">Stipend</TableHead>
                       <TableHead className="text-text-main font-bold">Min CGPA</TableHead>
+                      <TableHead className="text-text-main font-bold">Status</TableHead>
                       <TableHead className="text-right text-text-main font-bold">Export</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -411,6 +444,11 @@ export function AdminPanel() {
                         <TableCell className="text-text-muted">{c.package || 'TBD'}</TableCell>
                         <TableCell className="text-text-muted">{c.stipend || 'TBD'}</TableCell>
                         <TableCell className="text-text-muted">{c.minCgpa}</TableCell>
+                        <TableCell>
+                          <Badge variant={c.status === 'completed' ? 'outline' : 'default'} className={cn("cursor-pointer", c.status === 'completed' ? "text-amber-400 border-amber-400/20 bg-amber-400/10" : "bg-green-500/20 text-green-400 hover:bg-green-500/30")} onClick={() => void toggleCompanyStatus(c.id, c.status)}>
+                            {c.status === 'completed' ? 'Completed' : 'Ongoing'}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" onClick={() => setExportCompanyId(c.id)} className="hover:bg-white/10">
                             <Download className="w-4 h-4 text-primary" />
@@ -579,25 +617,35 @@ export function AdminPanel() {
           </Card>
 
           <Card className="glass-panel border-white/10">
-            <CardHeader>
-              <CardTitle>View Submissions</CardTitle>
-              <CardDescription className="text-text-muted">Monitor student participation and download data.</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>View Submissions & Pending</CardTitle>
+                <CardDescription className="text-text-muted">Monitor student participation and download data.</CardDescription>
+              </div>
+              <Button variant="outline" onClick={() => setShowAllForms(!showAllForms)} className="border-white/10 text-white hover:bg-white/5">
+                {showAllForms ? 'Show Recent Only' : 'View All Forms'}
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {data.forms.map(f => (
-                  <Button 
-                    key={f.id} 
-                    variant="outline" 
-                    className="justify-between h-auto py-3 px-4 border-white/10 bg-white/5 hover:bg-white/10 text-white"
-                    onClick={() => void openResponses(f.id, f.title)}
-                  >
-                    <div className="text-left overflow-hidden">
-                      <p className="font-bold truncate">{f.title}</p>
-                      <p className="text-[10px] text-text-muted">{f.responseCount || 0} responses</p>
+              <div className="space-y-4">
+                {(showAllForms ? data.forms : data.forms.slice(0, 10)).map(f => (
+                  <div key={f.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-white truncate">{f.title}</p>
+                      <p className="text-xs text-text-muted mt-1">{f.responseCount || 0} responses</p>
                     </div>
-                    <Eye className="w-4 h-4 text-primary opacity-50" />
-                  </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => void openResponses(f.id, f.title)} className="border-white/20 text-white hover:bg-white/10 gap-2">
+                        <Eye className="w-4 h-4" /> Responses
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => void openPending(f.id, f.title)} className="border-white/20 text-amber-400 hover:bg-amber-400/10 gap-2">
+                        <Users className="w-4 h-4" /> Pending
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => void exportFormExcel(f.id)} className="border-white/20 text-primary hover:bg-primary/10 gap-2">
+                        <Download className="w-4 h-4" /> Excel
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             </CardContent>
@@ -624,15 +672,27 @@ export function AdminPanel() {
                           <p className="text-xs text-text-muted truncate">{s.collegeEmailId}</p>
                         </div>
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant={s.verified ? "ghost" : "default"}
-                        className={cn("w-full", s.verified ? "text-green-400 bg-green-400/10 hover:bg-green-400/20" : "bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20")}
-                        disabled={s.verified || busy}
-                        onClick={() => void verifyStudent(s.id)}
-                      >
-                        {s.verified ? <><CheckCircle2 className="w-4 h-4 mr-2" /> Verified</> : "Verify Profile"}
-                      </Button>
+                      {s.unlockRequested ? (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="w-full text-amber-400 border-amber-400/20 bg-amber-400/10 hover:bg-amber-400/20 gap-2"
+                          disabled={busy}
+                          onClick={() => void approveUnlock(s.id)}
+                        >
+                          <Unlock className="w-4 h-4" /> Approve Unlock
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm" 
+                          variant={s.verified ? "ghost" : "default"}
+                          className={cn("w-full", s.verified ? "text-green-400 bg-green-400/10 hover:bg-green-400/20" : "bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20")}
+                          disabled={s.verified || busy}
+                          onClick={() => void verifyStudent(s.id)}
+                        >
+                          {s.verified ? <><CheckCircle2 className="w-4 h-4 mr-2" /> Verified</> : "Verify Profile"}
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -725,6 +785,40 @@ export function AdminPanel() {
                   <Download className="w-4 h-4" /> Download Excel
                 </Button>
               )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {pendingModal && (
+        <Dialog open={true} onOpenChange={() => setPendingModal(null)}>
+          <DialogContent className="glass-panel border-white/10 text-white max-w-2xl max-h-[80vh] flex flex-col p-0 overflow-hidden">
+            <DialogHeader className="p-6 pb-2">
+              <DialogTitle className="text-2xl text-white">Pending Submissions</DialogTitle>
+              <DialogDescription className="text-text-muted">Students who have not yet submitted "{pendingModal.title}".</DialogDescription>
+            </DialogHeader>
+            
+            <ScrollArea className="flex-1 p-6 pt-2">
+              {pendingModal.students.length === 0 ? (
+                <div className="py-10 text-center text-text-muted">All eligible students have submitted this form!</div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingModal.students.map(s => (
+                    <div key={s.id} className="flex items-center gap-4 p-3 rounded-lg border border-white/10 bg-white/5">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
+                        {s.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-white text-sm">{s.name}</p>
+                        <p className="text-xs text-text-muted">{s.usn || s.collegeEmailId}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+            <DialogFooter className="p-6 bg-white/5 border-t border-white/10">
+              <Button onClick={() => setPendingModal(null)} className="text-white hover:bg-white/5" variant="ghost">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

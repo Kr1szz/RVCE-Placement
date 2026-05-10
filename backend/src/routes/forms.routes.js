@@ -7,6 +7,7 @@ import {
   getForms,
   mapQuestionsToForm,
   sendFormToStudents,
+  getPendingStudents
 } from '../controllers/forms.controller.js';
 import { authenticate, requireSpc } from '../middleware/auth.js';
 
@@ -20,6 +21,7 @@ router.get('/:id', getFormDetail);
 router.post('/', requireSpc, createFormRecord);
 router.post('/:id/questions', requireSpc, mapQuestionsToForm);
 router.post('/:id/send', requireSpc, sendFormToStudents);
+router.get('/:id/pending', requireSpc, getPendingStudents);
 
 export default router;
 

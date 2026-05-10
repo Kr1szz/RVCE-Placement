@@ -59,6 +59,11 @@ export class PlacementRepository {
     return parseAppUser(json)
   }
 
+  async requestProfileUnlock(): Promise<AppUser> {
+    const json = await this.client.postJson('/users/me/unlock-request', {})
+    return parseAppUser(json)
+  }
+
   async uploadResume(file: File): Promise<AppUser> {
     const form = new FormData()
     form.append('resume', file)
@@ -158,6 +163,11 @@ export class PlacementRepository {
     await this.client.postJson(`/forms/${formId}/send`, {})
   }
 
+  async getPendingStudents(formId: number): Promise<StudentSummary[]> {
+    const list = await this.client.getList(`/forms/${formId}/pending`)
+    return list.map((item) => parseStudent(item as Record<string, unknown>))
+  }
+
   async createCompany(payload: {
     name: string
     minCgpa: number
@@ -169,6 +179,11 @@ export class PlacementRepository {
     await this.client.postJson('/companies', payload)
   }
 
+  async updateCompanyStatus(companyId: number, status: string): Promise<Company> {
+    const json = await this.client.putJson(`/companies/${companyId}/status`, { status })
+    return parseCompany(json as Record<string, unknown>)
+  }
+
   async getStudents(): Promise<StudentSummary[]> {
     const list = await this.client.getList('/users/students')
     return list.map((item) => parseStudent(item as Record<string, unknown>))
@@ -176,6 +191,10 @@ export class PlacementRepository {
 
   async verifyStudent(studentId: number): Promise<void> {
     await this.client.postJson(`/users/students/${studentId}/verify`, {})
+  }
+
+  async approveProfileUnlock(studentId: number): Promise<void> {
+    await this.client.postJson(`/users/students/${studentId}/unlock`, {})
   }
 
   async getFormResponses(formId: number): Promise<FormResponseRecord[]> {

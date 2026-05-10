@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS "users" (
   "name"              varchar,
   "college_email_id"  varchar UNIQUE,
   "personal_email_id" varchar UNIQUE,
-  "phone_number"      int[10],
+  "phone_number"      bigint,
   "aadhar"            bigint,
   "linkedIn"          varchar,
   "gitHub"            varchar,
@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS "users" (
   "twelfth_marks"     float,
   "resume_url"        text,
   "verified"          boolean,
+  "unlock_requested"  boolean DEFAULT false,
   "created_at"        timestamp
 );
 
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS "companies" (
   "test_date"      date,
   "interview_date" date,
   "created_by"     int,
+  "status"         varchar DEFAULT 'ongoing',
   "created_at"     timestamp
 );
 
@@ -165,3 +167,11 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
   ALTER TABLE "mentions" ADD FOREIGN KEY ("mentioned_user_id") REFERENCES "users" ("id") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "users" ADD COLUMN "unlock_requested" boolean DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "companies" ADD COLUMN "status" varchar DEFAULT 'ongoing';
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;

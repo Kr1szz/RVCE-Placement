@@ -10,6 +10,7 @@ const normalizeCompany = (row) => ({
   interviewDate: row.interview_date,
   createdBy: row.created_by,
   createdAt: row.created_at,
+  status: row.status,
   consent: row.application_consent,
   tracker: row.application_tracker,
 });
@@ -116,5 +117,16 @@ export const listEligibleStudentsForCompany = async (companyId) => {
     consent: row.consent,
     tracker: row.tracker,
   }));
+};
+
+export const updateCompanyStatus = async (companyId, status) => {
+  const { rows } = await query(
+    `UPDATE "companies"
+      SET "status" = $2
+      WHERE "id" = $1
+      RETURNING *`,
+    [companyId, status]
+  );
+  return rows[0] ? normalizeCompany(rows[0]) : null;
 };
 

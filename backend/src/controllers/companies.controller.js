@@ -1,7 +1,13 @@
 import { z } from 'zod';
 
 import { listApplicationsForStudent } from '../repositories/application.repository.js';
-import { createCompany, findCompanyById, listCompanies, listEligibleStudentsForCompany } from '../repositories/company.repository.js';
+import {
+  createCompany,
+  findCompanyById,
+  listCompanies,
+  listEligibleStudentsForCompany,
+  updateCompanyStatus
+} from '../repositories/company.repository.js';
 import { generateCompanyWorkbook } from '../services/export.service.js';
 import { ApiError } from '../utils/apiError.js';
 
@@ -86,6 +92,27 @@ export const exportCompany = async (req, res, next) => {
     );
     res.setHeader('Content-Disposition', `attachment; filename=company-${companyId}.xlsx`);
     res.send(Buffer.from(buffer));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateStatus = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const { status } = req.body;
+    
+    if (status !== 'ongoing' && status !== 'completed') {
+      throw new ApiError(400, 'Invalid status.');
+    }
+
+    const company = await findCompanyById(id);
+    if (!company) {
+      throw new ApiError(404, 'Company not found.');
+    }
+
+    const updated = await updateCompanyStatus(id, status);
+    res.json(updated);
   } catch (error) {
     next(error);
   }

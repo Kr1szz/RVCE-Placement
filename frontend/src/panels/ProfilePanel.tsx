@@ -7,7 +7,28 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, AlertCircle, Upload, Save, FileText, Clock } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Upload, Save, FileText, Clock, Unlock } from 'lucide-react'
+
+const FormField = ({ label, value, onChange, id, type = 'text', disabled = false }: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  id: string
+  type?: string
+  disabled?: boolean
+}) => (
+  <div className="space-y-2">
+    <Label htmlFor={id} className="text-sm font-medium text-text-muted">{label}</Label>
+    <Input
+      id={id}
+      type={type}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      className="bg-white/5 border-white/10 text-white focus:ring-primary/50"
+    />
+  </div>
+)
 
 export function ProfilePanel() {
   const { repo } = useAuth()
@@ -107,26 +128,18 @@ export function ProfilePanel() {
     input.click()
   }
 
-  const FormField = ({ label, value, onChange, id, type = 'text', disabled = false }: {
-    label: string
-    value: string
-    onChange: (v: string) => void
-    id: string
-    type?: string
-    disabled?: boolean
-  }) => (
-    <div className="space-y-2">
-      <Label htmlFor={id} className="text-sm font-medium text-text-muted">{label}</Label>
-      <Input
-        id={id}
-        type={type}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        className="bg-white/5 border-white/10 text-white focus:ring-primary/50"
-      />
-    </div>
-  )
+  const requestUnlock = async () => {
+    setSaving(true)
+    try {
+      await repo.requestProfileUnlock()
+      showToast('Edit request sent to SPC.')
+      await load()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -172,15 +185,28 @@ export function ProfilePanel() {
                   : 'Complete your profile and upload a resume to get verified.'}
               </CardDescription>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={uploadResume} 
-              disabled={readOnly}
-              className="gap-2 border-white/10 text-white hover:bg-white/5"
-            >
-              <Upload className="w-4 h-4" />
-              {user.resumeUrl ? 'Update Resume' : 'Upload Resume'}
-            </Button>
+            <div className="flex gap-2">
+              {user.verified && (
+                <Button 
+                  variant="outline" 
+                  onClick={requestUnlock} 
+                  disabled={user.unlockRequested || saving}
+                  className="gap-2 border-white/10 text-white hover:bg-white/5"
+                >
+                  <Unlock className="w-4 h-4" />
+                  {user.unlockRequested ? 'Edit Request Pending' : 'Request Profile Edit'}
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                onClick={uploadResume} 
+                disabled={saving}
+                className="gap-2 border-white/10 text-white hover:bg-white/5"
+              >
+                <Upload className="w-4 h-4" />
+                {user.resumeUrl ? 'Update Resume' : 'Upload Resume'}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         {user.resumeUrl && (
