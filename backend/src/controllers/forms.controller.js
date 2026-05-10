@@ -10,6 +10,8 @@ import {
   listForms,
   listQuestions,
   replaceFormQuestionMappings,
+  getPendingStudentsForForm,
+  deleteForm,
 } from '../repositories/form.repository.js';
 import { findUserById, listEligibleStudentIds, listStudentIds } from '../repositories/user.repository.js';
 import { sendToUsers } from '../services/notification.service.js';
@@ -170,6 +172,31 @@ export const sendFormToStudents = async (req, res, next) => {
     });
 
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteFormRecord = async (req, res, next) => {
+  try {
+    const formId = Number(req.params.id);
+    const form = await findFormById(formId);
+
+    if (!form) {
+      throw new ApiError(404, 'Form not found.');
+    }
+
+    await deleteForm(formId);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPendingStudents = async (req, res, next) => {
+  try {
+    const formId = Number(req.params.id);
+    res.json(await getPendingStudentsForForm(formId));
   } catch (error) {
     next(error);
   }

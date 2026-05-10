@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { findFormById, getFormQuestions } from '../repositories/form.repository.js';
+import { findCompanyById } from '../repositories/company.repository.js';
 import { listResponsesForForm, replaceFormResponses } from '../repositories/response.repository.js';
 import { ApiError } from '../utils/apiError.js';
 
@@ -69,26 +70,36 @@ export const getFormResponses = async (req, res, next) => {
     next(error);
   }
 };
-
 export const exportFormResponses = async (req, res, next) => {
   try {
     const formId = Number(req.params.formId);
-    
-    // Import dynamically to avoid circular dependencies if any, or just import at top.
-    // Wait, let's just add the import at the top of the file!
+    const form = await findFormById(formId);
+    if (!form) {
+      throw new ApiError(404, 'Form not found.');
+    }
+
     const { generateFormResponsesWorkbook } = await import('../services/export.service.js');
     const workbook = await generateFormResponsesWorkbook(formId);
 
     if (!workbook) {
-      throw new ApiError(404, 'Form not found.');
+      throw new ApiError(404, 'Export failed.');
     }
+
+    let fileName = form.title.replace(/[^a-zA-Z0-9]/g, '_');
+    if (form.companyId) {
+      const company = await findCompanyById(form.companyId);
+      if (company) {
+        fileName = `${company.name.replace(/[^a-zA-Z0-9]/g, '_')}_${fileName}`;
+      }
+    }
+    fileName = `${fileName}.xlsx`;
 
     const buffer = await workbook.xlsx.writeBuffer();
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
-    res.setHeader('Content-Disposition', `attachment; filename=form-${formId}-responses.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.send(Buffer.from(buffer));
   } catch (error) {
     next(error);

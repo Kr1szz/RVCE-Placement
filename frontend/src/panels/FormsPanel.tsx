@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import type { PlacementFormDetail, PlacementFormSummary } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DynamicFormModal } from './DynamicFormModal'
-import { FileText, Users, HelpCircle } from 'lucide-react'
+import { ClipboardList, MessageSquareText, FileQuestion, CheckCircle2, AlertCircle, Globe, Building } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export function FormsPanel() {
   const { repo } = useAuth()
@@ -44,30 +45,32 @@ export function FormsPanel() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     )
   }
 
   if (err || !forms) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <p className="text-red-400">{err ?? 'Failed to load forms.'}</p>
-        <Button onClick={() => void load()}>Retry</Button>
-      </div>
+      <Card className="glass-panel border-destructive/20 text-center p-12 max-w-2xl mx-auto">
+        <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+        <h3 className="text-xl font-bold mb-2 text-white">Failed to load forms</h3>
+        <p className="text-text-muted mb-6">{err ?? 'An unknown error occurred.'}</p>
+        <Button onClick={load}>Retry</Button>
+      </Card>
     )
   }
 
   if (forms.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 text-center">
-        <div className="p-4 rounded-full bg-white/5">
-          <FileText className="w-8 h-8 text-muted-foreground" />
+        <div className="p-6 rounded-full bg-white/5">
+          <ClipboardList className="w-10 h-10 text-text-muted opacity-50" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">No forms yet</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            SPC-created forms will appear here as soon as they are shared.
+          <h3 className="text-xl font-bold text-white">All caught up!</h3>
+          <p className="text-sm text-text-muted mt-1 max-w-xs">
+            No pending forms assigned to you at the moment. SPC-created forms will appear here.
           </p>
         </div>
       </div>
@@ -75,7 +78,7 @@ export function FormsPanel() {
   }
 
   return (
-    <div className="space-y-6 pb-20 lg:pb-8">
+    <div className="space-y-6 pb-20 lg:pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {detail ? (
         <DynamicFormModal
           detail={detail}
@@ -83,42 +86,69 @@ export function FormsPanel() {
           onSubmitted={load}
         />
       ) : null}
-      {forms.map((f) => (
-        <Card key={f.id} className="border-white/10 bg-white/5 backdrop-blur-xl">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div>
-                <CardTitle className="text-xl">{f.title}</CardTitle>
-                <CardDescription className="text-white/60 mt-1">
-                  {f.type.toUpperCase()} • {f.companyName ?? 'Global'}
-                </CardDescription>
+      
+      <div className="grid grid-cols-1 gap-6">
+        {forms.map((f) => (
+          <Card key={f.id} className="glass-panel border-white/10 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                <div className="space-y-1">
+                  <CardTitle className="text-xl flex items-center gap-2 text-white">
+                    {f.title}
+                    {(f.responseCount ?? 0) > 0 && (
+                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    )}
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-2">
+                    {f.companyName ? (
+                      <span className="flex items-center gap-1 text-text-muted">
+                        <Building className="w-3 h-3" /> {f.companyName}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-primary">
+                        <Globe className="w-3 h-3" /> Global Form
+                      </span>
+                    )}
+                    <span className="text-white/20">•</span>
+                    <span className="uppercase font-bold tracking-widest text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/60">
+                      {f.type}
+                    </span>
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => void openForm(f)}
+                  variant={(f.responseCount ?? 0) > 0 ? "outline" : "default"}
+                  className={cn(
+                    "gap-2 w-full sm:w-auto",
+                    (f.responseCount ?? 0) === 0 && "bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20",
+                    (f.responseCount ?? 0) > 0 && "border-white/10 text-white hover:bg-white/5"
+                  )}
+                >
+                  {(f.responseCount ?? 0) > 0 ? (
+                    <>Update Response</>
+                  ) : (
+                    <>Fill Form</>
+                  )}
+                </Button>
               </div>
-              <Button
-                onClick={() => void openForm(f)}
-                className="shrink-0"
-              >
-                {(f.responseCount ?? 0) > 0 ? 'Edit' : 'Fill'}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-6">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {f.questionCount ?? 0} Questions
-                </span>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-6 border-t border-white/5 pt-4 mt-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <FileQuestion className="w-4 h-4 text-text-muted" />
+                  <span className="font-bold text-white">{f.questionCount ?? 0}</span>
+                  <span className="text-text-muted">Questions</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <MessageSquareText className="w-4 h-4 text-text-muted" />
+                  <span className="font-bold text-white">{f.responseCount ?? 0}</span>
+                  <span className="text-text-muted">Responses</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {f.responseCount ?? 0} Responses
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }

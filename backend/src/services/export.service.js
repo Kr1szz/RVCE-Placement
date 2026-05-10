@@ -39,7 +39,8 @@ export const generateCompanyWorkbook = async (companyId, fields = []) => {
         u."twelfth_marks",
         u."first_sem_sgpa",
         u."ug_cgpa",
-        u."resume_url"
+        u."resume_url",
+        c."deadline"
       FROM "applications" a
       INNER JOIN "users" u ON u."id" = a."student_id"
       INNER JOIN "companies" c ON c."id" = a."company_id"
@@ -83,6 +84,7 @@ export const generateCompanyWorkbook = async (companyId, fields = []) => {
     { header: 'Name', key: 'name', width: 28 },
     { header: 'College Email', key: 'college_email_id', width: 32 },
     { header: 'UG CGPA', key: 'ug_cgpa', width: 12 },
+    { header: 'Tracker Applied', key: 'tracker', width: 15 },
     { header: 'Resume URL', key: 'resume_url', width: 50 },
     ...optionalColumns.filter(col => fields.includes(col.key)),
     ...questionRows.map((question) => ({
@@ -91,8 +93,10 @@ export const generateCompanyWorkbook = async (companyId, fields = []) => {
       width: 28,
     })),
   ];
-
   studentRows.forEach((student) => {
+    const deadlinePassed = student.deadline && new Date(student.deadline) <= new Date();
+    const trackerValue = student.tracker !== null ? student.tracker : (deadlinePassed ? true : null);
+    
     const row = {
       name: student.name,
       usn: student.usn,
@@ -106,6 +110,7 @@ export const generateCompanyWorkbook = async (companyId, fields = []) => {
       twelfth_marks: student.twelfth_marks,
       first_sem_sgpa: student.first_sem_sgpa,
       ug_cgpa: student.ug_cgpa,
+      tracker: trackerValue === true ? 'Yes' : (trackerValue === false ? 'No' : 'Pending'),
       resume_url: student.resume_url,
     };
 
@@ -145,7 +150,7 @@ export const generateFormResponsesWorkbook = async (formId) => {
   );
 
   const { rows: responseRows } = await query(
-    `SELECT fr."student_id", u."name", u."usn", u."college_email_id", fr."question_id", fr."answer"
+    `SELECT fr."student_id", u."name", u."usn", u."college_email_id", u."resume_url", fr."question_id", fr."answer"
       FROM "form_responses" fr
       INNER JOIN "users" u ON u."id" = fr."student_id"
       WHERE fr."form_id" = $1
@@ -160,6 +165,7 @@ export const generateFormResponsesWorkbook = async (formId) => {
         name: row.name,
         usn: row.usn,
         email: row.college_email_id,
+        resume_url: row.resume_url,
         answers: new Map(),
       });
     }
@@ -173,6 +179,7 @@ export const generateFormResponsesWorkbook = async (formId) => {
     { header: 'Name', key: 'name', width: 28 },
     { header: 'USN', key: 'usn', width: 16 },
     { header: 'College Email', key: 'college_email_id', width: 32 },
+    { header: 'Resume URL', key: 'resume_url', width: 50 },
     ...questionRows.map((question) => ({
       header: decodeQuestionText(question.question_text, question.field_type).label,
       key: `question_${question.id}`,
@@ -185,6 +192,7 @@ export const generateFormResponsesWorkbook = async (formId) => {
       name: student.name,
       usn: student.usn,
       college_email_id: student.email,
+      resume_url: student.resume_url,
     };
 
     questionRows.forEach((question) => {

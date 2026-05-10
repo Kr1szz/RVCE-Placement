@@ -7,6 +7,8 @@ import {
   getForms,
   mapQuestionsToForm,
   sendFormToStudents,
+  getPendingStudents,
+  deleteFormRecord
 } from '../controllers/forms.controller.js';
 import { authenticate, requireSpc } from '../middleware/auth.js';
 
@@ -20,6 +22,8 @@ router.get('/:id', getFormDetail);
 router.post('/', requireSpc, createFormRecord);
 router.post('/:id/questions', requireSpc, mapQuestionsToForm);
 router.post('/:id/send', requireSpc, sendFormToStudents);
+router.get('/:id/pending', requireSpc, getPendingStudents);
+router.delete('/:id', requireSpc, deleteFormRecord);
 
 export default router;
 

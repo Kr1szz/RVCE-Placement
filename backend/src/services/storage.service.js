@@ -1,7 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 
 import { env } from '../config/env.js';
+import { getBucket } from '../config/mongodb.js';
 
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 
@@ -15,9 +17,18 @@ const inferFileExtension = (fileName) => {
   return extension;
 };
 
-const buildResumeFileName = ({ userId, fileName }) => {
+const buildResumeFileName = ({ userName, userId, fileName }) => {
   const extension = inferFileExtension(fileName);
-  return `user_${userId}_resume${extension}`;
+  
+  if (!userName) return `User_${userId}_Resume${extension}`;
+
+  const cleanName = userName
+    .split(/[^a-zA-Z0-9]/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join('_');
+
+  return `${cleanName}_Resume${extension}`;
 };
 
 export const uploadResume = async ({
@@ -26,19 +37,51 @@ export const uploadResume = async ({
   mimeType,
   existingUrl,
   userId,
+  userName,
 }) => {
-  // Ensure the uploads directory exists
+  const resumeName = buildResumeFileName({ userName, userId, fileName });
+
+  // 1. Try MongoDB GridFS
+  try {
+    const bucket = await getBucket();
+    if (bucket) {
+      // Delete existing file if any
+      const existingFiles = await bucket.find({ filename: resumeName }).toArray();
+      for (const file of existingFiles) {
+        await bucket.delete(file._id);
+      }
+
+      // Upload new file
+      const uploadStream = bucket.openUploadStream(resumeName, {
+        contentType: mimeType,
+        metadata: { userId },
+      });
+
+      const readableStream = new Readable();
+      readableStream.push(buffer);
+      readableStream.push(null);
+
+      await new Promise((resolve, reject) => {
+        readableStream.pipe(uploadStream)
+          .on('error', reject)
+          .on('finish', resolve);
+      });
+
+      return `http://localhost:${env.port}/api/resumes/${resumeName}`;
+    }
+  } catch (error) {
+    console.error('MongoDB GridFS upload failed, falling back to local:', error);
+  }
+
+  // 2. Fallback to Local Storage
   try {
     await fs.mkdir(UPLOADS_DIR, { recursive: true });
   } catch (error) {
     console.error('Failed to create uploads directory:', error);
   }
 
-  const resumeName = buildResumeFileName({ userId, fileName });
   const filePath = path.join(UPLOADS_DIR, resumeName);
   
-  // If there's an existing URL, it will just get overwritten because we use a deterministic filename based on userId.
-  // So we don't strictly need to delete the old file unless the extension changes, but for safety:
   if (existingUrl && existingUrl.includes('/uploads/')) {
     try {
       const oldFileName = existingUrl.split('/').pop();
@@ -51,10 +94,7 @@ export const uploadResume = async ({
     }
   }
 
-  // Write the file locally
   await fs.writeFile(filePath, buffer);
 
-  // Return the public URL to access the file
-  // Using localhost:4000 dynamically based on env port
   return `http://localhost:${env.port}/uploads/${resumeName}`;
 };

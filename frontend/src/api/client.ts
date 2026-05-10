@@ -90,4 +90,12 @@ export class ApiClient {
     const buf = await res.arrayBuffer()
     return new Uint8Array(buf)
   }
+
+  async delete(path: string): Promise<void> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'DELETE',
+      headers: this.authHeaders(),
+    })
+    if (!res.ok) throw new Error(await readErrorMessage(res))
+  }
 }

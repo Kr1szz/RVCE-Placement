@@ -1,10 +1,12 @@
 import app from './app.js';
 import { pool } from './config/db.js';
 import { env } from './config/env.js';
+import { connectMongo } from './config/mongodb.js';
 
 const startServer = async () => {
   try {
     await pool.query('SELECT 1');
+    await connectMongo();
     app.listen(env.port, () => {
       console.log(`MCA Placement backend listening on port ${env.port}`);
     });

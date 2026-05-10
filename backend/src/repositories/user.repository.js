@@ -10,7 +10,7 @@ const normalizeUser = (row) => {
     name: row.name,
     collegeEmailId: row.college_email_id,
     personalEmailId: row.personal_email_id,
-    phoneNumber: Array.isArray(row.phone_number) ? row.phone_number[0]?.toString() ?? '' : '',
+    phoneNumber: row.phone_number ? row.phone_number.toString() : '',
     aadhar: row.aadhar,
     linkedIn: row.linkedIn,
     gitHub: row.gitHub,
@@ -22,6 +22,7 @@ const normalizeUser = (row) => {
     twelfthMarks: row.twelfth_marks,
     resumeUrl: row.resume_url,
     verified: row.verified ?? false,
+    unlockRequested: row.unlock_requested ?? false,
     createdAt: row.created_at,
   };
 };
@@ -75,7 +76,7 @@ export const attachGoogleIdentity = async ({ userId, name, email, googleId }) =>
 };
 
 export const updateUserProfile = async (userId, payload) => {
-  const phoneArray = payload.phoneNumber ? [Number(payload.phoneNumber)] : null;
+  const phoneNum = payload.phoneNumber ? payload.phoneNumber : null;
 
   const { rows } = await query(
     `UPDATE "users"
@@ -98,7 +99,7 @@ export const updateUserProfile = async (userId, payload) => {
       payload.name,
       payload.collegeEmailId,
       payload.personalEmailId,
-      phoneArray,
+      phoneNum,
       payload.aadhar,
       payload.linkedIn,
       payload.gitHub,
@@ -128,6 +129,22 @@ export const updateUserVerification = async (userId, verified) => {
     [userId, verified],
   );
 
+  return normalizeUser(rows[0]);
+};
+
+export const requestProfileUnlock = async (userId) => {
+  const { rows } = await query(
+    'UPDATE "users" SET "unlock_requested" = true WHERE "id" = $1 RETURNING *',
+    [userId]
+  );
+  return normalizeUser(rows[0]);
+};
+
+export const approveProfileUnlock = async (userId) => {
+  const { rows } = await query(
+    'UPDATE "users" SET "verified" = false, "unlock_requested" = false WHERE "id" = $1 RETURNING *',
+    [userId]
+  );
   return normalizeUser(rows[0]);
 };
 

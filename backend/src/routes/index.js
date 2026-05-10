@@ -8,6 +8,7 @@ import questionsRoutes from './questions.routes.js';
 import responsesRoutes from './responses.routes.js';
 import messagesRoutes from './messages.js';
 import usersRoutes from './users.routes.js';
+import storageRoutes from './storage.routes.js';
 
 const router = Router();
 
@@ -19,5 +20,6 @@ router.use('/forms', formsRoutes);
 router.use('/questions', questionsRoutes);
 router.use('/responses', responsesRoutes);
 router.use('/messages', messagesRoutes);
+router.use('/', storageRoutes);
 
 export default router;

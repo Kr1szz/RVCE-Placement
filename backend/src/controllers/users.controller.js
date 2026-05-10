@@ -1,7 +1,7 @@
 import multer from 'multer';
 import { z } from 'zod';
 
-import { findUserById, listStudents, updateUserProfile, updateUserResume, updateUserVerification } from '../repositories/user.repository.js';
+import { findUserById, listStudents, updateUserProfile, updateUserResume, updateUserVerification, requestProfileUnlock, approveProfileUnlock } from '../repositories/user.repository.js';
 import { sendToUsers } from '../services/notification.service.js';
 import { uploadResume } from '../services/storage.service.js';
 import { ApiError } from '../utils/apiError.js';
@@ -80,10 +80,6 @@ export const uploadMyResume = async (req, res, next) => {
       throw new ApiError(404, 'User not found.');
     }
 
-    if (existing.verified) {
-      throw new ApiError(403, 'Verified profiles cannot be edited.');
-    }
-
     if (!req.file) {
       throw new ApiError(400, 'Resume file is required.');
     }
@@ -94,6 +90,7 @@ export const uploadMyResume = async (req, res, next) => {
       mimeType: req.file.mimetype,
       existingUrl: existing.resumeUrl,
       userId: existing.id,
+      userName: existing.name,
     });
 
     const updated = await updateUserResume(existing.id, resumeUrl);
@@ -129,6 +126,47 @@ export const verifyStudent = async (req, res, next) => {
       body: 'Your placement profile has been verified and locked for edits.',
       data: {
         type: 'profile_verification',
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const requestUnlock = async (req, res, next) => {
+  try {
+    const existing = await findUserById(req.auth.userId);
+
+    if (!existing) {
+      throw new ApiError(404, 'User not found.');
+    }
+
+    const updated = await requestProfileUnlock(req.auth.userId);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const approveUnlock = async (req, res, next) => {
+  try {
+    const studentId = Number(req.params.id);
+    const student = await findUserById(studentId);
+
+    if (!student) {
+      throw new ApiError(404, 'Student not found.');
+    }
+
+    const updated = await approveProfileUnlock(studentId);
+
+    await sendToUsers({
+      userIds: [studentId],
+      title: 'Profile Edit Request Approved',
+      body: 'Your profile edit request has been approved. You can now edit your profile.',
+      data: {
+        type: 'profile_unlock_approved',
       },
     });
 

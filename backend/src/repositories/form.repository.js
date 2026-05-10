@@ -67,10 +67,26 @@ export const listAssignedFormsForStudent = async (studentId) => {
       LEFT JOIN "form_question_map" fqm ON fqm."form_id" = f."id"
       LEFT JOIN "form_responses" fr
         ON fr."form_id" = f."id" AND fr."student_id" = $1
+      LEFT JOIN "applications" a
+        ON a."company_id" = f."company_id" AND a."student_id" = $1
       INNER JOIN "users" u ON u."id" = $1
-      WHERE f."company_id" IS NULL
-         OR c."min_cgpa" IS NULL
-         OR u."ug_cgpa" >= c."min_cgpa"
+      WHERE u."verified" = TRUE
+        AND (c."status" IS NULL OR c."status" = 'ongoing')
+        AND (
+          f."company_id" IS NULL
+          OR (
+            (c."min_cgpa" IS NULL OR u."ug_cgpa" >= c."min_cgpa")
+            AND (
+              (f."type" NOT IN ('consent', 'tracker'))
+              OR (c."deadline" IS NULL OR c."deadline" > NOW() OR fr."id" IS NOT NULL)
+            )
+            AND (
+              f."type" = 'consent' 
+              OR a."consent" = TRUE 
+              OR (a."consent" IS NULL AND c."deadline" <= NOW() AND FALSE) -- Defaults to false after deadline
+            )
+          )
+        )
       GROUP BY f."id", c."name"
       ORDER BY f."created_at" DESC NULLS LAST, f."id" DESC`,
     [studentId],
@@ -174,4 +190,70 @@ export const replaceFormQuestionMappings = async (formId, questionMappings) =>
 
     return rows.map(normalizeQuestion);
   });
+
+export const getPendingStudentsForForm = async (formId) => {
+  const form = await findFormById(formId);
+  if (!form) return [];
+
+  const params = [formId];
+  let companyConditions = '';
+  let joinApplications = '';
+
+  if (form.companyId) {
+    params.push(form.companyId);
+    joinApplications = `LEFT JOIN "applications" a ON a."student_id" = u."id" AND a."company_id" = $2`;
+    
+    // Fetch company to get min_cgpa and deadline
+    const { rows: companyRows } = await query(`SELECT min_cgpa, deadline FROM "companies" WHERE id = $1`, [form.companyId]);
+    const minCgpa = companyRows[0]?.min_cgpa;
+    const deadline = companyRows[0]?.deadline;
+    const deadlinePassed = deadline && new Date(deadline) <= new Date();
+    
+    if (minCgpa != null) {
+      params.push(minCgpa);
+      companyConditions = `
+        AND u."ug_cgpa" >= $3
+        AND (
+          ${form.type === 'consent' ? 'TRUE' : `(a."consent" = TRUE OR (a."consent" IS NULL AND ${deadlinePassed ? 'FALSE' : 'FALSE'}))`}
+        )
+      `;
+    } else {
+      companyConditions = `
+        AND (
+          ${form.type === 'consent' ? 'TRUE' : `(a."consent" = TRUE OR (a."consent" IS NULL AND ${deadlinePassed ? 'FALSE' : 'FALSE'}))`}
+        )
+      `;
+    }
+  }
+
+  const { rows } = await query(
+    `SELECT u."id", u."name", u."usn", u."college_email_id", u."verified"
+      FROM "users" u
+      ${joinApplications}
+      WHERE u."verified" = TRUE
+      ${companyConditions}
+      AND u."id" NOT IN (
+        SELECT "student_id" FROM "form_responses" WHERE "form_id" = $1
+      )
+      ORDER BY u."name" ASC NULLS LAST`,
+    params
+  );
+
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    usn: r.usn,
+    collegeEmailId: r.college_email_id,
+    verified: r.verified
+  }));
+};
+
+export const deleteForm = async (formId) => {
+  await withTransaction(async (client) => {
+    // Delete mappings and responses first due to foreign key constraints
+    await client.query('DELETE FROM "form_question_map" WHERE "form_id" = $1', [formId]);
+    await client.query('DELETE FROM "form_responses" WHERE "form_id" = $1', [formId]);
+    await client.query('DELETE FROM "forms" WHERE "id" = $1', [formId]);
+  });
+};
 

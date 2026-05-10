@@ -7,6 +7,7 @@ import {
   getCompany,
   getEligibleStudents,
   getMyApplications,
+  updateStatus
 } from '../controllers/companies.controller.js';
 import { authenticate, requireSpc } from '../middleware/auth.js';
 
@@ -20,6 +21,7 @@ router.get('/:id', getCompany);
 router.post('/', requireSpc, createCompanyRecord);
 router.get('/:id/eligible-students', requireSpc, getEligibleStudents);
 router.get('/:id/export', requireSpc, exportCompany);
+router.put('/:id/status', requireSpc, updateStatus);
 
 export default router;
 

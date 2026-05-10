@@ -14,6 +14,7 @@ export type AppUser = {
   gitHub?: string | null
   usn?: string | null
   resumeUrl?: string | null
+  unlockRequested?: boolean
 }
 
 export type Session = {
@@ -31,8 +32,10 @@ export type Company = {
   stipend: string
   testDate?: string | null
   interviewDate?: string | null
+  deadline?: string | null
   consent?: boolean | null
   tracker?: boolean | null
+  status?: string
 }
 
 export type PlacementFormSummary = {
@@ -62,10 +65,12 @@ export type PlacementFormDetail = {
 export type StudentSummary = {
   id: number
   name: string
+  usn?: string
   collegeEmailId: string
   verified: boolean
   ugCgpa?: number | null
   resumeUrl?: string | null
+  unlockRequested?: boolean
 }
 
 export type FormResponseRecord = {
@@ -115,6 +120,7 @@ export function parseAppUser(json: Record<string, unknown>): AppUser {
     gitHub: json.gitHub as string | null | undefined,
     usn: json.usn as string | null | undefined,
     resumeUrl: json.resumeUrl as string | null | undefined,
+    unlockRequested: Boolean(json.unlockRequested),
   }
 }
 
@@ -136,8 +142,10 @@ export function parseCompany(json: Record<string, unknown>): Company {
     stipend: String(json.stipend ?? ''),
     testDate: json.testDate as string | null | undefined,
     interviewDate: json.interviewDate as string | null | undefined,
+    deadline: json.deadline as string | null | undefined,
     consent: json.consent as boolean | null | undefined,
     tracker: json.tracker as boolean | null | undefined,
+    status: json.status as string | undefined,
   }
 }
 
@@ -179,10 +187,12 @@ export function parseStudent(json: Record<string, unknown>): StudentSummary {
   return {
     id: num(json.id),
     name: String(json.name ?? ''),
+    usn: json.usn as string | undefined,
     collegeEmailId: String(json.collegeEmailId ?? ''),
     verified: Boolean(json.verified),
     ugCgpa: json.ugCgpa != null ? num(json.ugCgpa) : null,
     resumeUrl: json.resumeUrl as string | null | undefined,
+    unlockRequested: Boolean(json.unlockRequested),
   }
 }
 

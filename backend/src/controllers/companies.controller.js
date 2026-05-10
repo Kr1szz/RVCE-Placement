@@ -1,7 +1,13 @@
 import { z } from 'zod';
 
 import { listApplicationsForStudent } from '../repositories/application.repository.js';
-import { createCompany, findCompanyById, listCompanies, listEligibleStudentsForCompany } from '../repositories/company.repository.js';
+import {
+  createCompany,
+  findCompanyById,
+  listCompanies,
+  listEligibleStudentsForCompany,
+  updateCompanyStatus
+} from '../repositories/company.repository.js';
 import { generateCompanyWorkbook } from '../services/export.service.js';
 import { ApiError } from '../utils/apiError.js';
 
@@ -12,6 +18,7 @@ const companySchema = z.object({
   package: z.string().optional().nullable(),
   testDate: z.string().optional().nullable(),
   interviewDate: z.string().optional().nullable(),
+  deadline: z.string().optional().nullable(),
 });
 
 export const getCompanies = async (req, res, next) => {
@@ -75,17 +82,41 @@ export const exportCompany = async (req, res, next) => {
     const fields = req.query.fields ? req.query.fields.split(',') : [];
     const workbook = await generateCompanyWorkbook(companyId, fields);
 
-    if (!workbook) {
+    const company = await findCompanyById(companyId);
+    if (!company) {
       throw new ApiError(404, 'Company not found.');
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
+    const fileName = `${company.name.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
-    res.setHeader('Content-Disposition', `attachment; filename=company-${companyId}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.send(Buffer.from(buffer));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateStatus = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const { status } = req.body;
+    
+    if (status !== 'ongoing' && status !== 'completed') {
+      throw new ApiError(400, 'Invalid status.');
+    }
+
+    const company = await findCompanyById(id);
+    if (!company) {
+      throw new ApiError(404, 'Company not found.');
+    }
+
+    const updated = await updateCompanyStatus(id, status);
+    res.json(updated);
   } catch (error) {
     next(error);
   }
