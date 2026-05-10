@@ -39,7 +39,8 @@ export const generateCompanyWorkbook = async (companyId, fields = []) => {
         u."twelfth_marks",
         u."first_sem_sgpa",
         u."ug_cgpa",
-        u."resume_url"
+        u."resume_url",
+        c."deadline"
       FROM "applications" a
       INNER JOIN "users" u ON u."id" = a."student_id"
       INNER JOIN "companies" c ON c."id" = a."company_id"
@@ -92,8 +93,10 @@ export const generateCompanyWorkbook = async (companyId, fields = []) => {
       width: 28,
     })),
   ];
-
   studentRows.forEach((student) => {
+    const deadlinePassed = student.deadline && new Date(student.deadline) <= new Date();
+    const trackerValue = student.tracker !== null ? student.tracker : (deadlinePassed ? true : null);
+    
     const row = {
       name: student.name,
       usn: student.usn,
@@ -107,7 +110,7 @@ export const generateCompanyWorkbook = async (companyId, fields = []) => {
       twelfth_marks: student.twelfth_marks,
       first_sem_sgpa: student.first_sem_sgpa,
       ug_cgpa: student.ug_cgpa,
-      tracker: student.tracker ? 'Yes' : 'No',
+      tracker: trackerValue === true ? 'Yes' : (trackerValue === false ? 'No' : 'Pending'),
       resume_url: student.resume_url,
     };
 

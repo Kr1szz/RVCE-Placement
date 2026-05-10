@@ -32,6 +32,7 @@ export type Company = {
   stipend: string
   testDate?: string | null
   interviewDate?: string | null
+  deadline?: string | null
   consent?: boolean | null
   tracker?: boolean | null
   status?: string
@@ -141,6 +142,7 @@ export function parseCompany(json: Record<string, unknown>): Company {
     stipend: String(json.stipend ?? ''),
     testDate: json.testDate as string | null | undefined,
     interviewDate: json.interviewDate as string | null | undefined,
+    deadline: json.deadline as string | null | undefined,
     consent: json.consent as boolean | null | undefined,
     tracker: json.tracker as boolean | null | undefined,
     status: json.status as string | undefined,

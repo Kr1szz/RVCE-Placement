@@ -51,7 +51,8 @@ import {
   FileQuestion,
   FileText,
   Users,
-  Unlock
+  Unlock,
+  Trash2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -89,6 +90,7 @@ export function AdminPanel() {
   const [cStip, setCStip] = useState('')
   const [cTest, setCTest] = useState('')
   const [cInt, setCInt] = useState('')
+  const [cDeadline, setCDeadline] = useState('')
 
   // Question Form
   const [qText, setQText] = useState('')
@@ -125,6 +127,7 @@ export function AdminPanel() {
 
   // Forms view toggle
   const [showAllForms, setShowAllForms] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -171,8 +174,9 @@ export function AdminPanel() {
         stipend: cStip.trim(),
         testDate: cTest.trim() || null,
         interviewDate: cInt.trim() || null,
+        deadline: cDeadline.trim() || null,
       })
-      setCName(''); setCCgpa(''); setCPkg(''); setCStip(''); setCTest(''); setCInt('')
+      setCName(''); setCCgpa(''); setCPkg(''); setCStip(''); setCTest(''); setCInt(''); setCDeadline('')
     }, 'Company created.')
 
   const createQuestion = () =>
@@ -225,6 +229,13 @@ export function AdminPanel() {
     run(async () => {
       await repo.approveProfileUnlock(id)
     }, 'Unlock request approved. Profile is now unverified.')
+
+  const deleteForm = (formId: number) => {
+    if (!confirm('Are you sure you want to delete this form? This action cannot be undone.')) return
+    void run(async () => {
+      await repo.deleteForm(formId)
+    }, 'Form deleted.')
+  }
 
   const toggleCompanyStatus = (companyId: number, currentStatus: string | undefined) =>
     run(async () => {
@@ -297,7 +308,7 @@ export function AdminPanel() {
         <p className="text-text-muted text-sm">Manage recruitment drives, student profiles, and placement forms.</p>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-8 bg-white/5 border border-white/10 p-1 rounded-xl">
           <TabsTrigger value="overview" className="rounded-lg">Overview</TabsTrigger>
           <TabsTrigger value="companies" className="rounded-lg">Companies</TabsTrigger>
@@ -412,6 +423,10 @@ export function AdminPanel() {
                 <div className="space-y-2">
                   <Label className="text-text-main">Interview Date (YYYY-MM-DD)</Label>
                   <Input className="bg-white/5 border-white/10 text-white" placeholder="2026-06-20" value={cInt} onChange={e => setCInt(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-text-main">Deadline (YYYY-MM-DD HH:MM)</Label>
+                  <Input className="bg-white/5 border-white/10 text-white" placeholder="2026-06-14 23:59" value={cDeadline} onChange={e => setCDeadline(e.target.value)} />
                 </div>
               </div>
             </CardContent>
@@ -643,6 +658,9 @@ export function AdminPanel() {
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => void exportFormExcel(f.id)} className="border-white/20 text-primary hover:bg-primary/10 gap-2">
                         <Download className="w-4 h-4" /> Excel
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => deleteForm(f.id)} className="text-red-400 hover:bg-red-400/10 hover:text-red-300">
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>

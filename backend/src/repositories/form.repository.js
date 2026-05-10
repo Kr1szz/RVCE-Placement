@@ -76,7 +76,15 @@ export const listAssignedFormsForStudent = async (studentId) => {
           f."company_id" IS NULL
           OR (
             (c."min_cgpa" IS NULL OR u."ug_cgpa" >= c."min_cgpa")
-            AND (f."type" = 'consent' OR a."consent" = TRUE)
+            AND (
+              (f."type" NOT IN ('consent', 'tracker'))
+              OR (c."deadline" IS NULL OR c."deadline" > NOW() OR fr."id" IS NOT NULL)
+            )
+            AND (
+              f."type" = 'consent' 
+              OR a."consent" = TRUE 
+              OR (a."consent" IS NULL AND c."deadline" <= NOW() AND FALSE) -- Defaults to false after deadline
+            )
           )
         )
       GROUP BY f."id", c."name"
@@ -195,22 +203,24 @@ export const getPendingStudentsForForm = async (formId) => {
     params.push(form.companyId);
     joinApplications = `LEFT JOIN "applications" a ON a."student_id" = u."id" AND a."company_id" = $2`;
     
-    // Fetch company to get min_cgpa
-    const { rows: companyRows } = await query(`SELECT min_cgpa FROM "companies" WHERE id = $1`, [form.companyId]);
+    // Fetch company to get min_cgpa and deadline
+    const { rows: companyRows } = await query(`SELECT min_cgpa, deadline FROM "companies" WHERE id = $1`, [form.companyId]);
     const minCgpa = companyRows[0]?.min_cgpa;
+    const deadline = companyRows[0]?.deadline;
+    const deadlinePassed = deadline && new Date(deadline) <= new Date();
     
     if (minCgpa != null) {
       params.push(minCgpa);
       companyConditions = `
         AND u."ug_cgpa" >= $3
         AND (
-          ${form.type === 'consent' ? 'TRUE' : 'a."consent" = TRUE'}
+          ${form.type === 'consent' ? 'TRUE' : `(a."consent" = TRUE OR (a."consent" IS NULL AND ${deadlinePassed ? 'FALSE' : 'FALSE'}))`}
         )
       `;
     } else {
       companyConditions = `
         AND (
-          ${form.type === 'consent' ? 'TRUE' : 'a."consent" = TRUE'}
+          ${form.type === 'consent' ? 'TRUE' : `(a."consent" = TRUE OR (a."consent" IS NULL AND ${deadlinePassed ? 'FALSE' : 'FALSE'}))`}
         )
       `;
     }
@@ -236,5 +246,14 @@ export const getPendingStudentsForForm = async (formId) => {
     collegeEmailId: r.college_email_id,
     verified: r.verified
   }));
+};
+
+export const deleteForm = async (formId) => {
+  await withTransaction(async (client) => {
+    // Delete mappings and responses first due to foreign key constraints
+    await client.query('DELETE FROM "form_question_map" WHERE "form_id" = $1', [formId]);
+    await client.query('DELETE FROM "form_responses" WHERE "form_id" = $1', [formId]);
+    await client.query('DELETE FROM "forms" WHERE "id" = $1', [formId]);
+  });
 };
 

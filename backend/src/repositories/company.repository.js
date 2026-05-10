@@ -11,6 +11,7 @@ const normalizeCompany = (row) => ({
   createdBy: row.created_by,
   createdAt: row.created_at,
   status: row.status,
+  deadline: row.deadline,
   consent: row.application_consent,
   tracker: row.application_tracker,
 });
@@ -24,9 +25,10 @@ export const createCompany = async (payload) => {
       "package",
       "test_date",
       "interview_date",
+      "deadline",
       "created_by",
       "created_at"
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
     RETURNING *`,
     [
       payload.name,
@@ -35,6 +37,7 @@ export const createCompany = async (payload) => {
       payload.package,
       payload.testDate,
       payload.interviewDate,
+      payload.deadline,
       payload.createdBy,
     ],
   );

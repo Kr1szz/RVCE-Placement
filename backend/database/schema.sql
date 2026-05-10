@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS "companies" (
   "package"        varchar,
   "test_date"      date,
   "interview_date" date,
+  "deadline"       timestamp,
   "created_by"     int,
   "status"         varchar DEFAULT 'ongoing',
   "created_at"     timestamp
@@ -174,4 +175,8 @@ EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 
 DO $$ BEGIN
   ALTER TABLE "companies" ADD COLUMN "status" varchar DEFAULT 'ongoing';
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "companies" ADD COLUMN "deadline" timestamp;
 EXCEPTION WHEN duplicate_column THEN NULL; END $$;

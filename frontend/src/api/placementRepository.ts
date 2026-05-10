@@ -163,6 +163,10 @@ export class PlacementRepository {
     await this.client.postJson(`/forms/${formId}/send`, {})
   }
 
+  async deleteForm(formId: number): Promise<void> {
+    await this.client.delete(`/forms/${formId}`)
+  }
+
   async getPendingStudents(formId: number): Promise<StudentSummary[]> {
     const list = await this.client.getList(`/forms/${formId}/pending`)
     return list.map((item) => parseStudent(item as Record<string, unknown>))
