@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '../api/types'
 import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils'
 
 export function ChatPanel() {
   const { repo, session } = useAuth()
-  const { showToast } = useToast()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -54,7 +53,7 @@ export function ChatPanel() {
       setMessages((m) => [...m, msg])
       setText('')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
+      toast.error(e instanceof Error ? e.message : String(e))
     } finally {
       setSending(false)
     }

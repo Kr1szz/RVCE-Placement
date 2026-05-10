@@ -16,14 +16,8 @@ export const env = {
   databaseUrl: process.env.DATABASE_URL ?? '',
   databaseSsl: readBoolean(process.env.DATABASE_SSL),
   jwtSecret: process.env.JWT_SECRET ?? 'change-me',
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '30d',
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
-  googleDriveFolderId: (() => {
-    const raw = process.env.GOOGLE_DRIVE_FOLDER_ID ?? '';
-    // Accept either a bare folder ID or a full Drive URL
-    const match = raw.match(/\/folders\/([^?/]+)/);
-    return match ? match[1] : raw;
-  })(),
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID ?? '',
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? '',
@@ -31,4 +25,5 @@ export const env = {
     storageBucket: process.env.FIREBASE_STORAGE_BUCKET ?? `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
   },
   mongodbUri: process.env.MONGODB_URI ?? 'mongodb://localhost:27017/mca_placement',
+  spcEmails: (process.env.SPC_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean),
 };

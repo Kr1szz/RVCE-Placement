@@ -1,5 +1,5 @@
+import { useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
-import { ToastProvider } from './context/ToastContext'
 import DashboardScreen from './screens/DashboardScreen'
 import HomeScreen from './screens/HomeScreen'
 import { GraduationCap } from 'lucide-react'
@@ -24,7 +24,11 @@ function Splash() {
 }
 
 function AppContent() {
-  const { status } = useAuth()
+  const { status, restoreSession } = useAuth()
+
+  useEffect(() => {
+    restoreSession()
+  }, [restoreSession])
 
   if (status === 'checking' || status === 'loading') {
     return <Splash />
@@ -39,8 +43,6 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ToastProvider>
-      <AppContent />
-    </ToastProvider>
+    <AppContent />
   )
 }

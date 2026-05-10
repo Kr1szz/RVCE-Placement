@@ -1,0 +1,111 @@
+import { create } from 'zustand'
+import { useAuthStore } from './useAuthStore'
+import type { AppUser } from '../api/types'
+
+interface ProfileState {
+  profile: AppUser | null
+  draft: Partial<AppUser>
+  loading: boolean
+  saving: boolean
+  error: string | null
+
+  // Actions
+  fetchProfile: () => Promise<void>
+  setDraftField: (field: keyof AppUser, value: any) => void
+  saveProfile: () => Promise<void>
+  uploadResume: (file: File) => Promise<void>
+  requestUnlock: () => Promise<void>
+  resetDraft: () => void
+}
+
+export const useProfileStore = create<ProfileState>((set, get) => ({
+  profile: null,
+  draft: {},
+  loading: false,
+  saving: false,
+  error: null,
+
+  fetchProfile: async () => {
+    // Only show loader if we don't have a profile yet
+    if (!get().profile) set({ loading: true })
+    set({ error: null })
+    
+    try {
+      const repo = useAuthStore.getState().repo
+      const profile = await repo.getProfile()
+      
+      // Update official profile
+      set({ profile, loading: false })
+      
+      // If draft is empty, initialize it with official data
+      if (Object.keys(get().draft).length === 0) {
+        set({ draft: { ...profile } })
+      }
+    } catch (e) {
+      set({ 
+        error: e instanceof Error ? e.message : String(e), 
+        loading: false 
+      })
+    }
+  },
+
+  setDraftField: (field, value) => {
+    set((state) => ({
+      draft: { ...state.draft, [field]: value }
+    }))
+  },
+
+  resetDraft: () => {
+    const { profile } = get()
+    if (profile) set({ draft: { ...profile } })
+  },
+
+  saveProfile: async () => {
+    const { draft, profile } = get()
+    if (!profile) return
+
+    set({ saving: true })
+    try {
+      const repo = useAuthStore.getState().repo
+      
+      // Convert numeric fields from draft
+      const payload = {
+        ...draft,
+        ugCgpa: Number(draft.ugCgpa) || profile.ugCgpa,
+        tenthMarks: Number(draft.tenthMarks) || profile.tenthMarks,
+        twelfthMarks: Number(draft.twelfthMarks) || profile.twelfthMarks,
+        firstSemSgpa: Number(draft.firstSemSgpa) || profile.firstSemSgpa,
+      }
+
+      const updated = await repo.updateProfile(payload as any)
+      set({ profile: updated, draft: { ...updated }, saving: false })
+    } catch (e) {
+      set({ saving: false })
+      throw e
+    }
+  },
+
+  uploadResume: async (file) => {
+    set({ saving: true })
+    try {
+      const repo = useAuthStore.getState().repo
+      const updated = await repo.uploadResume(file)
+      set({ profile: updated, draft: { ...updated }, saving: false })
+    } catch (e) {
+      set({ saving: false })
+      throw e
+    }
+  },
+
+  requestUnlock: async () => {
+    set({ saving: true })
+    try {
+      const repo = useAuthStore.getState().repo
+      const updated = await repo.requestProfileUnlock()
+      set({ profile: updated, draft: { ...updated }, saving: false })
+    } catch (e) {
+      set({ saving: false })
+      throw e
+    }
+  }
+}))

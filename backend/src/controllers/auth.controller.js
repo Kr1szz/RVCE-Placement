@@ -28,7 +28,7 @@ const spcLoginSchema = z.object({
 
 const buildSessionPayload = async (user) => {
   const spcAccount = await findSpcAccountForUser(user.id);
-  const isSpc = Boolean(spcAccount);
+  const isSpc = Boolean(spcAccount) || env.spcEmails.includes(user.collegeEmailId.toLowerCase());
 
   return {
     token: signAccessToken({ userId: user.id, isSpc }),

@@ -1,28 +1,22 @@
 import { GoogleLogin } from '@react-oauth/google'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card'
 import { School } from 'lucide-react'
 
 export default function HomeScreen() {
-  const { loginWithSpc, loginWithGoogle, errorMessage, clearError, status } =
-    useAuth()
-  const { showToast } = useToast()
-  const [isSpc, setIsSpc] = useState(false)
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
+  const { loginWithGoogle, errorMessage, clearError, status } = useAuth()
+  const isBusy = status === 'loading'
 
   useEffect(() => {
     if (errorMessage) {
-      showToast(errorMessage)
+      toast.error(errorMessage)
       clearError()
     }
-  }, [errorMessage, clearError, showToast])
-
-  const isBusy = status === 'loading'
+  }, [errorMessage, clearError])
 
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -46,90 +40,29 @@ export default function HomeScreen() {
         </div>
 
         <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
-          <CardHeader className="space-y-4 text-center">
-            <div className="flex justify-center gap-2 p-1 rounded-xl bg-white/5">
-              <button
-                type="button"
-                onClick={() => setIsSpc(false)}
-                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  !isSpc 
-                    ? 'bg-primary text-white shadow-lg shadow-primary/25' 
-                    : 'text-muted-foreground hover:text-white'
-                }`}
-              >
-                Student
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsSpc(true)}
-                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  isSpc 
-                    ? 'bg-primary text-white shadow-lg shadow-primary/25' 
-                    : 'text-muted-foreground hover:text-white'
-                }`}
-              >
-                SPC
-              </button>
-            </div>
+          <CardHeader className="text-center">
             <CardDescription className="text-white/60">
-              {isSpc 
-                ? 'Sign in with your SPC credentials' 
-                : 'Sign in with your RVCE Google account'}
+              Sign in with your RVCE Google account
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!isSpc ? (
-              <div className="flex justify-center">
-                <GoogleLogin
-                  onSuccess={(cred) => {
-                    if (cred.credential) void loginWithGoogle(cred.credential)
-                  }}
-                  onError={() => showToast('Google sign-in failed.')}
-                  useOneTap={false}
-                  theme="filled_blue"
-                  size="large"
-                  text="continue_with"
-                  shape="rectangular"
-                  width="100%"
-                />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <Input
-                    placeholder="Username"
-                    value={username}
-                    disabled={isBusy}
-                    onChange={(e) => setUsername(e.target.value)}
-                    autoComplete="username"
-                  />
-                </div>
-                <div>
-                  <Input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    disabled={isBusy}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !isBusy) {
-                        void loginWithSpc(username.trim(), password)
-                      }
-                    }}
-                  />
-                </div>
-                <Button
-                  className="w-full"
-                  disabled={isBusy}
-                  onClick={() => void loginWithSpc(username.trim(), password)}
-                >
-                  {isBusy ? 'Signing in...' : 'Sign in'}
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-center">
+              <GoogleLogin
+                onSuccess={(cred) => {
+                  if (cred.credential) void loginWithGoogle(cred.credential)
+                }}
+                onError={() => toast.error('Google sign-in failed.')}
+                useOneTap={false}
+                theme="filled_blue"
+                size="large"
+                text="signin_with"
+                shape="rectangular"
+                width="100%"
+              />
+            </div>
           </CardContent>
         </Card>
+
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           RVCE MCA Placement Management System

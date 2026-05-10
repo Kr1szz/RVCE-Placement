@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { Company } from '../api/types'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useCompanyStore } from '../store/useCompanyStore'
+import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
@@ -11,46 +11,27 @@ import { Building2, Calendar, IndianRupee, Star, Mail, CheckCircle2, AlertCircle
 import { formatDate } from '../lib/format'
 
 export function CompaniesPanel() {
-  const { repo } = useAuth()
-  const { showToast } = useToast()
-  const [companies, setCompanies] = useState<Company[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
-  const [busy, setBusy] = useState<Set<number>>(() => new Set())
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setErr(null)
-    try {
-      setCompanies(await repo.getCompanies())
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
-      setCompanies(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [repo])
+  const { 
+    companies, 
+    loading, 
+    error: err, 
+    busyIds, 
+    fetchCompanies, 
+    updateApplication 
+  } = useCompanyStore()
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void fetchCompanies()
+  }, [fetchCompanies])
 
-  const updateCompany = async (
+  const onUpdate = async (
     company: Company,
     patch: { consent?: boolean; tracker?: boolean },
   ) => {
-    setBusy((b) => new Set(b).add(company.id))
     try {
-      await repo.saveApplication(company.id, patch)
-      setCompanies(await repo.getCompanies())
+      await updateApplication(company, patch)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
-    } finally {
-      setBusy((b) => {
-        const n = new Set(b)
-        n.delete(company.id)
-        return n
-      })
+      toast.error(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -68,7 +49,7 @@ export function CompaniesPanel() {
         <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
         <h3 className="text-xl font-bold mb-2 text-white">Failed to load companies</h3>
         <p className="text-text-muted mb-6">{err ?? 'An unknown error occurred.'}</p>
-        <Button onClick={load}>Retry</Button>
+        <Button onClick={fetchCompanies}>Retry</Button>
       </Card>
     )
   }
@@ -86,7 +67,7 @@ export function CompaniesPanel() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {companies.map((c) => {
-        const isBusy = busy.has(c.id)
+        const isBusy = busyIds.has(c.id)
         return (
           <Card key={c.id} className="glass-panel border-white/10 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300">
             <CardHeader className="pb-4">
@@ -142,7 +123,7 @@ export function CompaniesPanel() {
                     <Switch
                       id={`consent-${c.id}`}
                       checked={c.consent ?? false}
-                      onCheckedChange={(v) => void updateCompany(c, { consent: v })}
+                      onCheckedChange={(v) => void onUpdate(c, { consent: v })}
                       disabled={isBusy}
                       className="data-[state=checked]:bg-primary"
                     />
@@ -158,7 +139,7 @@ export function CompaniesPanel() {
                     <Switch
                       id={`tracker-${c.id}`}
                       checked={c.tracker ?? false}
-                      onCheckedChange={(v) => void updateCompany(c, { tracker: v })}
+                      onCheckedChange={(v) => void onUpdate(c, { tracker: v })}
                       disabled={isBusy}
                       className="data-[state=checked]:bg-primary"
                     />

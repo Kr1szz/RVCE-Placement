@@ -7,7 +7,7 @@ import type {
   StudentSummary,
 } from '../api/types'
 import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { toast } from 'sonner'
 import { downloadBlob, formatDate } from '../lib/format'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -77,7 +77,6 @@ type AdminData = {
 
 export function AdminPanel() {
   const { repo } = useAuth()
-  const { showToast } = useToast()
   const [data, setData] = useState<AdminData | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -157,9 +156,9 @@ export function AdminPanel() {
     try {
       await task()
       await load()
-      if (ok) showToast(ok)
+      if (ok) toast.success(ok)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
+      toast.error(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
     }
@@ -201,7 +200,7 @@ export function AdminPanel() {
     }, 'Form created.')
 
   const saveMapping = () => {
-    if (!mapFormId) return showToast('Select a form.')
+    if (!mapFormId) return toast.error('Select a form.')
     const questions = Object.entries(mapped)
       .filter(([, on]) => on)
       .map(([id]) => ({
@@ -214,7 +213,7 @@ export function AdminPanel() {
   }
 
   const sendForm = () => {
-    if (!mapFormId) return showToast('Select a form.')
+    if (!mapFormId) return toast.error('Select a form.')
     return run(async () => {
       await repo.sendForm(Number(mapFormId))
     }, 'Notifications sent.')
@@ -259,7 +258,7 @@ export function AdminPanel() {
       const rows = await repo.getFormResponses(formId)
       setResponsesModal({ formId, title, rows })
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
+      toast.error(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -268,7 +267,7 @@ export function AdminPanel() {
       const students = await repo.getPendingStudents(formId)
       setPendingModal({ formId, title, students })
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
+      toast.error(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -276,9 +275,9 @@ export function AdminPanel() {
     try {
       const bytes = await repo.exportFormResponses(formId)
       downloadBlob(new Blob([bytes] as any), `form-${formId}-responses.xlsx`)
-      showToast('Download started.')
+      toast.success('Download started.')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
+      toast.error(e instanceof Error ? e.message : String(e))
     }
   }
 

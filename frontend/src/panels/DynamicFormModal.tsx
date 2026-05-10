@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { PlacementFormDetail } from '../api/types'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useFormStore } from '../store/useFormStore'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,8 +32,7 @@ export function DynamicFormModal({
   onClose: () => void
   onSubmitted: () => void
 }) {
-  const { repo } = useAuth()
-  const { showToast } = useToast()
+  const { submitResponse } = useFormStore()
   const [saving, setSaving] = useState(false)
 
   const initial = useMemo(() => {
@@ -65,18 +64,18 @@ export function DynamicFormModal({
     }
 
     if (detail.questions.some((q) => q.isRequired && !(values[q.id] ?? '').trim())) {
-      showToast('Please fill all required fields.')
+      toast.error('Please fill all required fields.')
       return
     }
 
     setSaving(true)
     try {
-      await repo.submitFormResponses(detail.summary.id, answers)
-      showToast('Responses submitted successfully.')
+      await submitResponse(detail.summary.id, answers)
+      toast.success('Responses submitted successfully.')
       onSubmitted()
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
+      toast.error(e instanceof Error ? e.message : String(e))
     } finally {
       setSaving(false)
     }

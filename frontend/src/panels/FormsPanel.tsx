@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { PlacementFormDetail, PlacementFormSummary } from '../api/types'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useFormStore } from '../store/useFormStore'
+import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DynamicFormModal } from './DynamicFormModal'
@@ -9,36 +9,19 @@ import { ClipboardList, MessageSquareText, FileQuestion, CheckCircle2, AlertCirc
 import { cn } from '@/lib/utils'
 
 export function FormsPanel() {
-  const { repo } = useAuth()
-  const { showToast } = useToast()
-  const [forms, setForms] = useState<PlacementFormSummary[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
+  const { forms, loading, error: err, fetchForms, getFormDetails } = useFormStore()
   const [detail, setDetail] = useState<PlacementFormDetail | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setErr(null)
-    try {
-      setForms(await repo.getAssignedForms())
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
-      setForms(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [repo])
-
   useEffect(() => {
-    void load()
-  }, [load])
+    void fetchForms()
+  }, [fetchForms])
 
   const openForm = async (summary: PlacementFormSummary) => {
     try {
-      const d = await repo.getForm(summary.id)
+      const d = await getFormDetails(summary.id)
       setDetail(d)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
+      toast.error(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -56,7 +39,7 @@ export function FormsPanel() {
         <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
         <h3 className="text-xl font-bold mb-2 text-white">Failed to load forms</h3>
         <p className="text-text-muted mb-6">{err ?? 'An unknown error occurred.'}</p>
-        <Button onClick={load}>Retry</Button>
+        <Button onClick={fetchForms}>Retry</Button>
       </Card>
     )
   }
@@ -83,10 +66,10 @@ export function FormsPanel() {
         <DynamicFormModal
           detail={detail}
           onClose={() => setDetail(null)}
-          onSubmitted={load}
+          onSubmitted={fetchForms}
         />
       ) : null}
-      
+
       <div className="grid grid-cols-1 gap-6">
         {forms.map((f) => (
           <Card key={f.id} className="glass-panel border-white/10 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300">
@@ -115,7 +98,7 @@ export function FormsPanel() {
                     </span>
                   </CardDescription>
                 </div>
-                <Button 
+                <Button
                   onClick={() => void openForm(f)}
                   variant={(f.responseCount ?? 0) > 0 ? "outline" : "default"}
                   className={cn(

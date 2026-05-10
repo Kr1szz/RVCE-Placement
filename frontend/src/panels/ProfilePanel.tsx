@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { AppUser } from '../api/types'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useProfileStore } from '../store/useProfileStore'
+import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,86 +31,35 @@ const FormField = ({ label, value, onChange, id, type = 'text', disabled = false
 )
 
 export function ProfilePanel() {
-  const { repo } = useAuth()
-  const { showToast } = useToast()
-  const [user, setUser] = useState<AppUser | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  const [name, setName] = useState('')
-  const [usn, setUsn] = useState('')
-  const [collegeEmail, setCollegeEmail] = useState('')
-  const [personalEmail, setPersonalEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [aadhar, setAadhar] = useState('')
-  const [linkedIn, setLinkedIn] = useState('')
-  const [gitHub, setGitHub] = useState('')
-  const [cgpa, setCgpa] = useState('')
-  const [tenth, setTenth] = useState('')
-  const [twelfth, setTwelfth] = useState('')
-  const [firstSem, setFirstSem] = useState('')
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setErr(null)
-    try {
-      const u = await repo.getProfile()
-      setUser(u)
-      setName(u.name)
-      setUsn(u.usn ?? '')
-      setCollegeEmail(u.collegeEmailId)
-      setPersonalEmail(u.personalEmailId)
-      setPhone(u.phoneNumber ?? '')
-      setAadhar(u.aadhar ?? '')
-      setLinkedIn(u.linkedIn ?? '')
-      setGitHub(u.gitHub ?? '')
-      setCgpa(u.ugCgpa === 0 ? '' : String(u.ugCgpa))
-      setTenth(u.tenthMarks === 0 ? '' : String(u.tenthMarks))
-      setTwelfth(u.twelfthMarks === 0 ? '' : String(u.twelfthMarks))
-      setFirstSem(u.firstSemSgpa === 0 ? '' : String(u.firstSemSgpa))
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
-      setUser(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [repo])
+  const { 
+    profile: user, 
+    draft, 
+    loading, 
+    saving, 
+    error: err,
+    fetchProfile,
+    setDraftField,
+    saveProfile,
+    uploadResume,
+    requestUnlock
+  } = useProfileStore()
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void fetchProfile()
+  }, [fetchProfile])
 
   const readOnly = Boolean(user?.verified) || saving
 
-  const saveProfile = async () => {
-    if (!user) return
-    setSaving(true)
+  const onSave = async () => {
     try {
-      await repo.updateProfile({
-        name: name.trim(),
-        usn: usn.trim(),
-        collegeEmailId: collegeEmail.trim(),
-        personalEmailId: personalEmail.trim(),
-        phoneNumber: phone.trim(),
-        aadhar: aadhar.trim(),
-        linkedIn: linkedIn.trim(),
-        gitHub: gitHub.trim(),
-        ugCgpa: Number.parseFloat(cgpa) || user.ugCgpa,
-        tenthMarks: Number.parseFloat(tenth) || user.tenthMarks,
-        twelfthMarks: Number.parseFloat(twelfth) || user.twelfthMarks,
-        firstSemSgpa: Number.parseFloat(firstSem) || user.firstSemSgpa,
-      })
-      showToast('Profile updated.')
-      await load()
+      await saveProfile()
+      toast.success('Profile updated.')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
-    } finally {
-      setSaving(false)
+      toast.error(e instanceof Error ? e.message : String(e))
     }
   }
 
-  const uploadResume = async () => {
+  const onUploadResume = async () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'application/pdf'
@@ -118,28 +67,25 @@ export function ProfilePanel() {
       const file = input.files?.[0]
       if (!file) return
       try {
-        await repo.uploadResume(file)
-        showToast('Resume uploaded.')
-        await load()
+        await uploadResume(file)
+        toast.success('Resume uploaded.')
       } catch (e) {
-        showToast(e instanceof Error ? e.message : String(e))
+        toast.error(e instanceof Error ? e.message : String(e))
       }
     }
     input.click()
   }
 
-  const requestUnlock = async () => {
-    setSaving(true)
+  const onRequestUnlock = async () => {
     try {
-      await repo.requestProfileUnlock()
-      showToast('Edit request sent to SPC.')
-      await load()
+      await requestUnlock()
+      toast.success('Edit request sent to SPC.')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
-    } finally {
-      setSaving(false)
+      toast.error(e instanceof Error ? e.message : String(e))
     }
   }
+
+  const load = fetchProfile // For retry button
 
   if (loading) {
     return (
@@ -187,9 +133,9 @@ export function ProfilePanel() {
             </div>
             <div className="flex gap-2">
               {user.verified && (
-                <Button 
-                  variant="outline" 
-                  onClick={requestUnlock} 
+                <Button
+                  variant="outline"
+                  onClick={onRequestUnlock}
                   disabled={user.unlockRequested || saving}
                   className="gap-2 border-white/10 text-white hover:bg-white/5"
                 >
@@ -197,9 +143,9 @@ export function ProfilePanel() {
                   {user.unlockRequested ? 'Edit Request Pending' : 'Request Profile Edit'}
                 </Button>
               )}
-              <Button 
-                variant="outline" 
-                onClick={uploadResume} 
+              <Button
+                variant="outline"
+                onClick={onUploadResume}
                 disabled={saving}
                 className="gap-2 border-white/10 text-white hover:bg-white/5"
               >
@@ -217,9 +163,9 @@ export function ProfilePanel() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Current Resume</p>
-                <a 
-                  href={user.resumeUrl} 
-                  target="_blank" 
+                <a
+                  href={user.resumeUrl}
+                  target="_blank"
                   rel="noreferrer"
                   className="text-sm font-medium text-primary hover:underline truncate block"
                 >
@@ -241,22 +187,22 @@ export function ProfilePanel() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FormField label="Full Name" value={name} onChange={setName} id="pf-name" disabled={readOnly} />
-            <FormField label="USN" value={usn} onChange={setUsn} id="pf-usn" disabled={readOnly} />
-            <FormField label="College Email" value={collegeEmail} onChange={setCollegeEmail} id="pf-ce" type="email" disabled={readOnly} />
-            <FormField label="Personal Email" value={personalEmail} onChange={setPersonalEmail} id="pf-pe" type="email" disabled={readOnly} />
-            <FormField label="Phone Number" value={phone} onChange={setPhone} id="pf-phone" disabled={readOnly} />
-            <FormField label="Aadhar Number" value={aadhar} onChange={setAadhar} id="pf-aadhar" disabled={readOnly} />
-            <FormField label="LinkedIn URL" value={linkedIn} onChange={setLinkedIn} id="pf-li" disabled={readOnly} />
-            <FormField label="GitHub URL" value={gitHub} onChange={setGitHub} id="pf-gh" disabled={readOnly} />
-            <FormField label="UG CGPA" value={cgpa} onChange={setCgpa} id="pf-cgpa" type="number" disabled={readOnly} />
-            <FormField label="1st Sem SGPA" value={firstSem} onChange={setFirstSem} id="pf-fs" type="number" disabled={readOnly} />
-            <FormField label="10th Aggregate (%)" value={tenth} onChange={setTenth} id="pf-10" type="number" disabled={readOnly} />
-            <FormField label="12th Aggregate (%)" value={twelfth} onChange={setTwelfth} id="pf-12" type="number" disabled={readOnly} />
+            <FormField label="Full Name" value={draft.name ?? ''} onChange={(v) => setDraftField('name', v)} id="pf-name" disabled={readOnly} />
+            <FormField label="USN" value={draft.usn ?? ''} onChange={(v) => setDraftField('usn', v)} id="pf-usn" disabled={readOnly} />
+            <FormField label="College Email" value={draft.collegeEmailId ?? ''} onChange={(v) => setDraftField('collegeEmailId', v)} id="pf-ce" type="email" disabled={readOnly} />
+            <FormField label="Personal Email" value={draft.personalEmailId ?? ''} onChange={(v) => setDraftField('personalEmailId', v)} id="pf-pe" type="email" disabled={readOnly} />
+            <FormField label="Phone Number" value={draft.phoneNumber ?? ''} onChange={(v) => setDraftField('phoneNumber', v)} id="pf-phone" disabled={readOnly} />
+            <FormField label="Aadhar Number" value={draft.aadhar ?? ''} onChange={(v) => setDraftField('aadhar', v)} id="pf-aadhar" disabled={readOnly} />
+            <FormField label="LinkedIn URL" value={draft.linkedIn ?? ''} onChange={(v) => setDraftField('linkedIn', v)} id="pf-li" disabled={readOnly} />
+            <FormField label="GitHub URL" value={draft.gitHub ?? ''} onChange={(v) => setDraftField('gitHub', v)} id="pf-gh" disabled={readOnly} />
+            <FormField label="UG CGPA" value={String(draft.ugCgpa ?? '')} onChange={(v) => setDraftField('ugCgpa', v)} id="pf-cgpa" type="number" disabled={readOnly} />
+            <FormField label="1st Sem SGPA" value={String(draft.firstSemSgpa ?? '')} onChange={(v) => setDraftField('firstSemSgpa', v)} id="pf-fs" type="number" disabled={readOnly} />
+            <FormField label="10th Aggregate (%)" value={String(draft.tenthMarks ?? '')} onChange={(v) => setDraftField('tenthMarks', v)} id="pf-10" type="number" disabled={readOnly} />
+            <FormField label="12th Aggregate (%)" value={String(draft.twelfthMarks ?? '')} onChange={(v) => setDraftField('twelfthMarks', v)} id="pf-12" type="number" disabled={readOnly} />
           </div>
         </CardContent>
         <CardFooter className="justify-end border-t border-white/10 p-6 bg-white/5">
-          <Button onClick={saveProfile} disabled={readOnly} className="gap-2 bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20">
+          <Button onClick={onSave} disabled={readOnly} className="gap-2 bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20">
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save Profile'}
           </Button>
