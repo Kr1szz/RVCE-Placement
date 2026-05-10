@@ -31,7 +31,29 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['favicon.png', 'pwa-icon.svg'],
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\/api\/auth\/me/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'auth-cache',
+              expiration: { maxEntries: 1, maxAgeSeconds: 60 * 60 * 24 },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/.*\/api\/(companies|forms|questions)/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'api-data-cache',
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 7 }, // Cache for 1 week
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
       manifest: {
         name: 'RVCE Placement',
         short_name: 'Placement',
