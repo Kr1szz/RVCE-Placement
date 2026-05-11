@@ -1,20 +1,12 @@
 import { GoogleLogin } from '@react-oauth/google'
-import { useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 import { toast } from 'sonner'
-import { ShieldCheck, UserRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { AuthCardSkeleton } from '@/components/modern/Skeleton'
 import { CollegeLogo } from '@/components/modern/CollegeLogo'
-import { cn } from '@/lib/utils'
-
-type Role = 'student' | 'spc'
 
 export default function HomeScreen() {
-  const { loginWithGoogle, loginWithSpc, errorMessage, clearError, status } = useAuth()
-  const [role, setRole] = useState<Role>('student')
-  const [spcUsername, setSpcUsername] = useState('')
-  const [spcPassword, setSpcPassword] = useState('')
+  const { loginWithGoogle, errorMessage, clearError, status } = useAuth()
   const isBusy = status === 'loading'
 
   useEffect(() => {
@@ -40,117 +32,28 @@ export default function HomeScreen() {
         ) : (
           <section
             aria-label="Placement portal sign in"
-            className="w-full rounded-[2rem] border border-white/10 bg-[#444444] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.28)] animate-in fade-in slide-in-from-bottom-2 duration-500"
+            className="w-full rounded-[2rem] border border-white/10 bg-[#444444] p-8 shadow-[0_24px_60px_rgba(15,23,42,0.28)] animate-in fade-in slide-in-from-bottom-2 duration-500"
           >
-            <div className="mb-8 flex rounded-full bg-[#d2eaff] p-1.5" role="tablist" aria-label="Role">
-              <RoleTab
-                icon={<UserRound className="size-4" aria-hidden="true" />}
-                label="Student"
-                active={role === 'student'}
-                onClick={() => setRole('student')}
-              />
-              <RoleTab
-                icon={<ShieldCheck className="size-4" aria-hidden="true" />}
-                label="SPC"
-                active={role === 'spc'}
-                onClick={() => setRole('spc')}
+            <p className="mb-6 text-center text-sm font-medium text-white/80">
+              Sign in with your RVCE Google account
+            </p>
+            <div className="flex justify-center rounded-2xl bg-[#0d72d9] px-3 py-3 hover:bg-blue-600 transition-colors">
+              <GoogleLogin
+                onSuccess={(cred) => {
+                  if (cred.credential) void loginWithGoogle(cred.credential)
+                }}
+                onError={() => toast.error('Google sign-in failed.')}
+                useOneTap={false}
+                theme="filled_blue"
+                size="large"
+                text="continue_with"
+                shape="pill"
+                width="300"
               />
             </div>
-
-            {role === 'student' ? (
-              <>
-                <p className="mb-4 text-center text-xs text-white/60">
-                  Sign in with your RVCE Google account
-                </p>
-                <div className="flex justify-center rounded-2xl bg-[#0d72d9] px-3 py-3">
-                  <GoogleLogin
-                    onSuccess={(cred) => {
-                      if (cred.credential) void loginWithGoogle(cred.credential)
-                    }}
-                    onError={() => toast.error('Google sign-in failed.')}
-                    useOneTap={false}
-                    theme="filled_blue"
-                    size="large"
-                    text="continue_with"
-                    shape="pill"
-                    width="300"
-                  />
-                </div>
-              </>
-            ) : (
-              <form
-                className="space-y-4"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  const username = spcUsername.trim()
-                  if (!username || !spcPassword) {
-                    toast.error('Enter SPC username and password.')
-                    return
-                  }
-                  void loginWithSpc(username, spcPassword)
-                }}
-              >
-                <label className="block">
-                  <span className="sr-only">SPC username</span>
-                  <input
-                    type="text"
-                    autoComplete="username"
-                    value={spcUsername}
-                    onChange={(event) => setSpcUsername(event.target.value)}
-                    placeholder="Username"
-                    className="w-full rounded-2xl bg-[#f0f7ff] px-5 py-4 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0066cc]"
-                  />
-                </label>
-                <label className="block">
-                  <span className="sr-only">SPC password</span>
-                  <input
-                    type="password"
-                    autoComplete="current-password"
-                    value={spcPassword}
-                    onChange={(event) => setSpcPassword(event.target.value)}
-                    placeholder="Password"
-                    className="w-full rounded-2xl bg-[#f0f7ff] px-5 py-4 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0066cc]"
-                  />
-                </label>
-                <button
-                  type="submit"
-                  className="mt-2 w-full rounded-2xl bg-[#0066cc] py-4 font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#444444]"
-                >
-                  Sign in
-                </button>
-              </form>
-            )}
           </section>
         )}
       </main>
     </div>
-  )
-}
-
-function RoleTab({
-  icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: ReactNode
-  label: string
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        'flex flex-1 items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-        active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-700 hover:text-gray-900',
-      )}
-    >
-      {icon}
-      {label}
-    </button>
   )
 }

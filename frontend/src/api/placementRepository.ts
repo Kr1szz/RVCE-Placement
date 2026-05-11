@@ -36,15 +36,6 @@ export class PlacementRepository {
     return parseSession(json)
   }
 
-  async spcLogin(username: string, password: string): Promise<Session> {
-    const json = await this.client.postJson('/auth/spc/login', {
-      username,
-      password,
-    })
-    return parseSession(json)
-  }
-
-
   async restoreSession(): Promise<Session> {
     const json = await this.client.getJson('/auth/me')
     return parseSession(json)

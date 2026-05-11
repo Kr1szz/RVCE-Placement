@@ -19,7 +19,6 @@ interface AuthState {
   // Actions
   restoreSession: () => Promise<void>
   loginWithGoogle: (idToken: string) => Promise<void>
-  loginWithSpc: (username: string, password: string) => Promise<void>
   logout: () => void
   clearError: () => void
 }
@@ -71,21 +70,6 @@ export const useAuthStore = create<AuthState>()(
           set({ 
             status: 'unauthenticated', 
             errorMessage: e instanceof Error ? e.message : String(e) 
-          })
-        }
-      },
-
-      loginWithSpc: async (username: string, password: string) => {
-        set({ status: 'loading', errorMessage: null })
-        try {
-          const session = await repo.spcLogin(username, password)
-          client.setToken(session.token)
-          localStorage.setItem(AUTH_TOKEN_KEY, session.token)
-          set({ status: 'authenticated', session, errorMessage: null })
-        } catch (e) {
-          set({
-            status: 'unauthenticated',
-            errorMessage: e instanceof Error ? e.message : String(e),
           })
         }
       },
