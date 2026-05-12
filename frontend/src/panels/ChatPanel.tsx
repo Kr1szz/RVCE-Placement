@@ -76,7 +76,7 @@ export function ChatPanel() {
       await repo.deleteMessage(id)
       setMessages((prev) => prev.filter((m) => m.id !== id))
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e))
+      toast.error(e instanceof Error ? e.message : String(e))
     }
   }
 
