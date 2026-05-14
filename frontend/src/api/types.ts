@@ -63,16 +63,7 @@ export type PlacementFormDetail = {
   questions: FormQuestion[]
 }
 
-export type StudentSummary = {
-  id: number
-  name: string
-  usn?: string
-  collegeEmailId: string
-  verified: boolean
-  ugCgpa?: number | null
-  resumeUrl?: string | null
-  unlockRequested?: boolean
-}
+export type StudentSummary = AppUser;
 
 export type FormResponseRecord = {
   studentName: string
@@ -188,16 +179,7 @@ export function parseFormDetail(json: Record<string, unknown>): PlacementFormDet
 }
 
 export function parseStudent(json: Record<string, unknown>): StudentSummary {
-  return {
-    id: num(json.id),
-    name: String(json.name ?? ''),
-    usn: json.usn as string | undefined,
-    collegeEmailId: String(json.collegeEmailId ?? ''),
-    verified: Boolean(json.verified),
-    ugCgpa: json.ugCgpa != null ? num(json.ugCgpa) : null,
-    resumeUrl: json.resumeUrl as string | null | undefined,
-    unlockRequested: Boolean(json.unlockRequested),
-  }
+  return parseAppUser(json);
 }
 
 export function parseFormResponseRecord(

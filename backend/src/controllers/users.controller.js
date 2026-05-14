@@ -131,6 +131,35 @@ export const uploadMyProfilePicture = async (req, res, next) => {
   }
 };
 
+export const rejectStudent = async (req, res, next) => {
+  try {
+    const studentId = Number(req.params.id);
+    const { reason } = req.body;
+    const student = await findUserById(studentId);
+
+    if (!student) {
+      throw new ApiError(404, 'Student not found.');
+    }
+
+    if (!reason || reason.trim() === '') {
+      throw new ApiError(400, 'Rejection reason is required.');
+    }
+
+    await sendToUsers({
+      userIds: [studentId],
+      title: 'Profile Verification Rejected',
+      body: `Your profile verification was rejected. Reason: ${reason}. Please review and update your details.`,
+      data: {
+        type: 'profile_verification_rejected',
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getStudents = async (req, res, next) => {
   try {
     const verified = req.query.verified === undefined ? undefined : req.query.verified === 'true';

@@ -9,6 +9,7 @@ import {
   uploadMyResume,
   uploadMyProfilePicture,
   verifyStudent,
+  rejectStudent,
   requestUnlock,
   approveUnlock
 } from '../controllers/users.controller.js';
@@ -25,7 +26,7 @@ router.post('/me/profile-picture', profilePictureUploadMiddleware, uploadMyProfi
 router.post('/me/unlock-request', requestUnlock);
 router.get('/students', requireSpc, getStudents);
 router.post('/students/:id/verify', requireSpc, verifyStudent);
+router.post('/students/:id/reject', requireSpc, rejectStudent);
 router.post('/students/:id/unlock', requireSpc, approveUnlock);
 
 export default router;
-

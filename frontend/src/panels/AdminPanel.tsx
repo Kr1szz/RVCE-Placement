@@ -131,6 +131,11 @@ export function AdminPanel() {
     students: StudentSummary[]
   } | null>(null)
 
+  // Verification Modal
+  const [reviewStudent, setReviewStudent] = useState<StudentSummary | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejecting, setRejecting] = useState(false)
+
   // Forms view toggle
   const [showAllForms, setShowAllForms] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
@@ -227,10 +232,36 @@ export function AdminPanel() {
     }, 'Notifications sent.')
   }
 
-  const verifyStudent = (id: number) =>
-    run(async () => {
-      await repo.verifyStudent(id)
-    }, 'Student verified.')
+  const handleRejectStudent = async () => {
+    if (!reviewStudent || !rejectReason.trim()) return
+    setRejecting(true)
+    try {
+      await repo.rejectStudent(reviewStudent.id, rejectReason.trim())
+      toast.success('Student profile rejected. They have been notified.')
+      setReviewStudent(null)
+      setRejectReason('')
+      await load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRejecting(false)
+    }
+  }
+
+  const handleVerifyStudent = async () => {
+    if (!reviewStudent) return
+    setRejecting(true)
+    try {
+      await repo.verifyStudent(reviewStudent.id)
+      toast.success('Student verified and locked.')
+      setReviewStudent(null)
+      await load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRejecting(false)
+    }
+  }
 
   const approveUnlock = (id: number) =>
     run(async () => {
@@ -714,10 +745,10 @@ export function AdminPanel() {
                           size="sm" 
                           variant={s.verified ? "ghost" : "default"}
                           className={cn("w-full", s.verified ? "text-green-400 bg-green-400/10 hover:bg-green-400/20" : "bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20")}
-                          disabled={s.verified || busy}
-                          onClick={() => void verifyStudent(s.id)}
+                          disabled={busy}
+                          onClick={() => setReviewStudent(s)}
                         >
-                          {s.verified ? <><CheckCircle2 className="w-4 h-4 mr-2" /> Verified</> : "Verify Profile"}
+                          {s.verified ? <><CheckCircle2 className="w-4 h-4 mr-2" /> View Verified Profile</> : "Review Profile"}
                         </Button>
                       )}
                     </CardContent>
@@ -846,6 +877,73 @@ export function AdminPanel() {
             </ScrollArea>
             <DialogFooter className="p-6 bg-slate-100 dark:bg-white/5 border-t border-slate-200 dark:border-white/10">
               <Button onClick={() => setPendingModal(null)} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:bg-white/5" variant="ghost">Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      {reviewStudent && (
+        <Dialog open={true} onOpenChange={() => setReviewStudent(null)}>
+          <DialogContent className="glass-panel text-slate-900 dark:text-white max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+            <DialogHeader className="p-6 pb-2">
+              <DialogTitle className="text-2xl text-slate-900 dark:text-white">Profile Review: {reviewStudent.name}</DialogTitle>
+              <DialogDescription className="text-muted-foreground">Review the student's details before verifying.</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-1 p-6 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div><Label className="text-muted-foreground">Full Name</Label><p className="font-bold text-slate-900 dark:text-white">{reviewStudent.name}</p></div>
+                  <div><Label className="text-muted-foreground">USN</Label><p className="font-bold text-slate-900 dark:text-white">{reviewStudent.usn || '—'}</p></div>
+                  <div><Label className="text-muted-foreground">College Email</Label><p className="text-slate-900 dark:text-white">{reviewStudent.collegeEmailId || '—'}</p></div>
+                  <div><Label className="text-muted-foreground">Personal Email</Label><p className="text-slate-900 dark:text-white">{reviewStudent.personalEmailId || '—'}</p></div>
+                  <div><Label className="text-muted-foreground">Phone</Label><p className="text-slate-900 dark:text-white">{reviewStudent.phoneNumber || '—'}</p></div>
+                  <div><Label className="text-muted-foreground">Aadhar</Label><p className="text-slate-900 dark:text-white">{reviewStudent.aadhar || '—'}</p></div>
+                </div>
+                <div className="space-y-4">
+                  <div><Label className="text-muted-foreground">UG CGPA</Label><p className="font-bold text-slate-900 dark:text-white">{reviewStudent.ugCgpa || '—'}</p></div>
+                  <div><Label className="text-muted-foreground">1st Sem SGPA</Label><p className="text-slate-900 dark:text-white">{reviewStudent.firstSemSgpa || '—'}</p></div>
+                  <div><Label className="text-muted-foreground">10th Marks</Label><p className="text-slate-900 dark:text-white">{reviewStudent.tenthMarks || '—'}</p></div>
+                  <div><Label className="text-muted-foreground">12th Marks</Label><p className="text-slate-900 dark:text-white">{reviewStudent.twelfthMarks || '—'}</p></div>
+                  <div>
+                    <Label className="text-muted-foreground">Links</Label>
+                    <div className="flex gap-4 mt-1">
+                      {reviewStudent.linkedIn ? <a href={reviewStudent.linkedIn} target="_blank" rel="noreferrer" className="text-primary hover:underline">LinkedIn</a> : <span className="text-muted-foreground">No LinkedIn</span>}
+                      {reviewStudent.gitHub ? <a href={reviewStudent.gitHub} target="_blank" rel="noreferrer" className="text-primary hover:underline">GitHub</a> : <span className="text-muted-foreground">No GitHub</span>}
+                      {reviewStudent.resumeUrl ? <a href={reviewStudent.resumeUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline font-bold">View Resume</a> : <span className="text-muted-foreground">No Resume</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Status</Label>
+                    <p className="font-bold text-slate-900 dark:text-white">
+                      {reviewStudent.verified ? <span className="text-green-500">Verified</span> : <span className="text-amber-500">Unverified</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+            </ScrollArea>
+            <DialogFooter className="p-6 bg-slate-100 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex flex-col gap-4">
+              {!reviewStudent.verified && (
+                <div className="w-full space-y-2">
+                  <Label className="text-text-main text-sm font-bold">Rejection Reason (Required if rejecting)</Label>
+                  <Input 
+                    placeholder="Enter reason for rejection (e.g., Incorrect Aadhar format)" 
+                    value={rejectReason} 
+                    onChange={e => setRejectReason(e.target.value)}
+                    className="bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white"
+                  />
+                </div>
+              )}
+              <div className="flex w-full sm:justify-between items-center gap-4">
+                <Button onClick={() => setReviewStudent(null)} className="text-slate-900 dark:text-white hover:bg-slate-200 dark:bg-white/10" variant="ghost">Close</Button>
+                {!reviewStudent.verified && (
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button variant="destructive" onClick={handleRejectStudent} disabled={rejecting || !rejectReason.trim()} className="w-full sm:w-auto">Reject Profile</Button>
+                    <Button onClick={handleVerifyStudent} disabled={rejecting} className="bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20 w-full sm:w-auto gap-2">
+                      <CheckCircle2 className="w-4 h-4" /> Approve & Lock
+                    </Button>
+                  </div>
+                )}
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
