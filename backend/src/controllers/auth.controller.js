@@ -11,7 +11,6 @@ import {
   findUserByGoogleId,
   findUserById,
 } from '../repositories/user.repository.js';
-import { buildUserTopic } from '../services/notification.service.js';
 import { ApiError } from '../utils/apiError.js';
 import { signAccessToken } from '../utils/jwt.js';
 
@@ -33,7 +32,7 @@ const buildSessionPayload = async (user) => {
   return {
     token: signAccessToken({ userId: user.id, isSpc }),
     isSpc,
-    notificationTopic: buildUserTopic(user.id),
+    notificationTopic: '',
     user,
   };
 };
@@ -104,7 +103,7 @@ export const spcLogin = async (req, res, next) => {
     res.json({
       token: signAccessToken({ userId: user.id, isSpc: true }),
       isSpc: true,
-      notificationTopic: buildUserTopic(user.id),
+      notificationTopic: '',
       user,
     });
   } catch (error) {

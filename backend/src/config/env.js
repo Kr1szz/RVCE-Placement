@@ -18,11 +18,16 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET ?? 'change-me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '30d',
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
-  firebase: {
-    projectId: process.env.FIREBASE_PROJECT_ID ?? '',
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? '',
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n') ?? '',
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET ?? `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
+  googleDriveFolderId: process.env.GOOGLE_DRIVE_FOLDER_ID ?? '',
+  googleServiceAccount: {
+    clientEmail: process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL ?? '',
+    privateKey:
+      process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n') ?? '',
+  },
+  webPush: {
+    publicKey: process.env.WEB_PUSH_PUBLIC_KEY ?? '',
+    privateKey: process.env.WEB_PUSH_PRIVATE_KEY ?? '',
+    subject: process.env.WEB_PUSH_SUBJECT ?? 'mailto:placements@rvce.edu.in',
   },
   mongodbUri: process.env.MONGODB_URI ?? 'mongodb://localhost:27017/mca_placement',
   baseUrl: process.env.BACKEND_URL ?? `http://localhost:${Number(process.env.PORT ?? 4000)}`,
