@@ -31,8 +31,19 @@ export class PlacementRepository {
     this.client = client
   }
 
-  async registerFcmToken(token: string): Promise<void> {
-    await this.client.postJson('/notifications/register', { token })
+  async getNotificationPublicKey(): Promise<{
+    configured: boolean
+    publicKey: string
+  }> {
+    const json = await this.client.getJson('/notifications/public-key')
+    return {
+      configured: Boolean(json.configured),
+      publicKey: String(json.publicKey ?? ''),
+    }
+  }
+
+  async registerPushSubscription(subscription: PushSubscriptionJSON): Promise<void> {
+    await this.client.postJson('/notifications/subscriptions', { subscription })
   }
 
   async googleLogin(idToken: string): Promise<Session> {

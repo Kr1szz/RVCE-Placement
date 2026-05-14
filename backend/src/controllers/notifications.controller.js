@@ -1,22 +1,35 @@
 import { z } from 'zod';
 
-import { subscribeTokenToUserTopic } from '../services/notificationTopics.service.js';
+import { upsertNotificationSubscription } from '../repositories/notification.repository.js';
+import { getPublicVapidKey } from '../services/notification.service.js';
 
-const registerSchema = z.object({
-  token: z.string().min(1),
+const subscriptionSchema = z.object({
+  endpoint: z.string().url(),
+  expirationTime: z.number().nullable().optional(),
+  keys: z.object({
+    p256dh: z.string().min(1),
+    auth: z.string().min(1),
+  }),
 });
 
-// POST /api/notifications/register
-export const registerNotificationToken = async (req, res, next) => {
+export const getNotificationPublicKey = async (_req, res, next) => {
   try {
-    const { token } = registerSchema.parse(req.body);
-    const result = await subscribeTokenToUserTopic({
-      userId: req.auth.userId,
-      token,
-    });
-    res.json(result);
+    res.json(getPublicVapidKey());
   } catch (error) {
     next(error);
   }
 };
 
+export const registerNotificationSubscription = async (req, res, next) => {
+  try {
+    const subscription = subscriptionSchema.parse(req.body.subscription);
+    await upsertNotificationSubscription({
+      userId: req.auth.userId,
+      subscription,
+    });
+
+    res.json({ subscribed: true });
+  } catch (error) {
+    next(error);
+  }
+};

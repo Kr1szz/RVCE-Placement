@@ -1,10 +1,7 @@
 /// <reference lib="webworker" />
 
-import { precacheAndRoute } from 'workbox-precaching'
 import { clientsClaim } from 'workbox-core'
-
-import { initializeApp } from 'firebase/app'
-import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw'
+import { precacheAndRoute } from 'workbox-precaching'
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{
@@ -13,58 +10,92 @@ declare const self: ServiceWorkerGlobalScope & {
   }>
 }
 
+type PushNotificationPayload = {
+  notification?: {
+    title?: string
+    body?: string
+    data?: Record<string, string>
+  }
+}
+
 clientsClaim()
 self.skipWaiting()
 
 precacheAndRoute(self.__WB_MANIFEST)
 
-// Firebase background notifications (FCM)
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+function getNavigationUrl(data: Record<string, string> = {}) {
+  const type = data.type || ''
+
+  if (type === 'new_company' && data.companyId) {
+    return `/companies/${data.companyId}`
+  }
+
+  if ((type === 'form_assignment' || type === 'new_form') && data.formId) {
+    return `/forms/${data.formId}`
+  }
+
+  if (type === 'message_mention' || type === 'announcement') {
+    return '/messages'
+  }
+
+  return '/'
 }
 
-// Only initialize if config is present (prevents SW crash in dev/envs)
-if (
-  firebaseConfig.apiKey &&
-  firebaseConfig.authDomain &&
-  firebaseConfig.projectId &&
-  firebaseConfig.messagingSenderId &&
-  firebaseConfig.appId
-) {
-  const app = initializeApp(firebaseConfig)
-  const messaging = getMessaging(app)
-
-  onBackgroundMessage(messaging, (payload) => {
-    const title = payload.notification?.title ?? 'New notification'
-    const body = payload.notification?.body ?? ''
-    const data = payload.data ?? {}
-
-    self.registration.showNotification(title, {
-      body,
-      data,
-    })
-  })
+function readPushPayload(event: PushEvent): PushNotificationPayload {
+  try {
+    return (event.data?.json() ?? {}) as PushNotificationPayload
+  } catch {
+    return {
+      notification: {
+        title: 'New notification',
+        body: event.data?.text() ?? '',
+      },
+    }
+  }
 }
+
+self.addEventListener('push', (event) => {
+  const payload = readPushPayload(event)
+  const notification = payload.notification ?? {}
+  const title = notification.title ?? 'New notification'
+  const data = notification.data ?? {}
+
+  event.waitUntil(
+    (async () => {
+      const windowClients = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      })
+
+      windowClients.forEach((client) => {
+        client.postMessage({
+          type: 'PUSH_NOTIFICATION',
+          notification: {
+            title,
+            body: notification.body ?? '',
+            data,
+          },
+        })
+      })
+
+      const hasFocusedClient = windowClients.some((client) => client.focused)
+      if (hasFocusedClient) return
+
+      await self.registration.showNotification(title, {
+        body: notification.body ?? '',
+        icon: '/pwa-192x192.png',
+        badge: '/pwa-64x64.png',
+        data,
+      })
+    })(),
+  )
+})
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const data = (event.notification.data ?? {}) as Record<string, string>
-
-  const type = data.type || ''
-  let url = '/'
-  if (type === 'new_company' && data.companyId) url = `/companies/${data.companyId}`
-  else if ((type === 'form_assignment' || type === 'new_form') && data.formId)
-    url = `/forms/${data.formId}`
-  else if (
-    (type === 'message_mention' || type === 'announcement') &&
-    data.messageId
+  const url = getNavigationUrl(
+    (event.notification.data ?? {}) as Record<string, string>,
   )
-    url = `/messages`
 
   event.waitUntil(
     (async () => {
@@ -75,7 +106,7 @@ self.addEventListener('notificationclick', (event) => {
 
       for (const client of allClients) {
         if ('focus' in client) {
-          client.navigate(url)
+          await client.navigate(url)
           await client.focus()
           return
         }
@@ -85,4 +116,3 @@ self.addEventListener('notificationclick', (event) => {
     })(),
   )
 })
-

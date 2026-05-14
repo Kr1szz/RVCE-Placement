@@ -1,46 +1,94 @@
-import { getToken, onMessage } from 'firebase/messaging'
-import { FIREBASE_VAPID_KEY } from '../config'
 import { toast } from 'sonner'
-import { getFirebaseMessaging } from './firebase'
 import type { PlacementRepository } from '../api/placementRepository'
 
-export async function registerNotifications(repo: PlacementRepository): Promise<void> {
-  const messaging = await getFirebaseMessaging()
-  if (!messaging) return
+let serviceWorkerMessageListenerRegistered = false
 
-  if (!('Notification' in window)) return
-  if (!('serviceWorker' in navigator)) return
-  if (!FIREBASE_VAPID_KEY) return
+function urlBase64ToArrayBuffer(base64String: string): ArrayBuffer {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(base64)
+  const outputArray = new Uint8Array(rawData.length)
+
+  for (let i = 0; i < rawData.length; i += 1) {
+    outputArray[i] = rawData.charCodeAt(i)
+  }
+
+  return outputArray.buffer as ArrayBuffer
+}
+
+function canUsePushNotifications(): boolean {
+  return (
+    window.isSecureContext &&
+    'Notification' in window &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window
+  )
+}
+
+function applicationServerKeysMatch(
+  subscription: PushSubscription | null,
+  publicKey: ArrayBuffer,
+) {
+  const currentKey = subscription?.options.applicationServerKey
+  if (!currentKey) return false
+
+  const current = new Uint8Array(currentKey)
+  const expected = new Uint8Array(publicKey)
+  if (current.byteLength !== expected.byteLength) return false
+
+  return current.every((value, index) => value === expected[index])
+}
+
+function registerForegroundMessageListener() {
+  if (serviceWorkerMessageListenerRegistered) return
+
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const payload = event.data as
+      | {
+          type?: string
+          notification?: { title?: string; body?: string }
+        }
+      | undefined
+
+    if (payload?.type !== 'PUSH_NOTIFICATION') return
+
+    toast(payload.notification?.title ?? 'New notification', {
+      description: payload.notification?.body ?? '',
+    })
+  })
+
+  serviceWorkerMessageListenerRegistered = true
+}
+
+export async function registerNotifications(repo: PlacementRepository): Promise<void> {
+  if (!canUsePushNotifications()) return
+
+  const { configured, publicKey } = await repo.getNotificationPublicKey()
+  if (!configured || !publicKey) return
 
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return
 
-  // Ensure SW is ready before requesting token
   const registration = await navigator.serviceWorker.ready
+  const applicationServerKey = urlBase64ToArrayBuffer(publicKey)
+  let subscription =
+    await registration.pushManager.getSubscription()
 
-  const token = await getToken(messaging, {
-    vapidKey: FIREBASE_VAPID_KEY,
-    serviceWorkerRegistration: registration,
-  })
+  if (
+    subscription &&
+    !applicationServerKeysMatch(subscription, applicationServerKey)
+  ) {
+    await subscription.unsubscribe()
+    subscription = null
+  }
 
-  if (!token) return
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey,
+    })
+  }
 
-  await repo.registerFcmToken(token)
-
-  onMessage(messaging, (payload) => {
-    const title = payload.notification?.title ?? 'New notification'
-    const body = payload.notification?.body ?? ''
-
-    // Foreground UX: show toast + native notification (if allowed)
-    toast(title, { description: body })
-
-    try {
-      if (Notification.permission === 'granted') {
-        new Notification(title, { body })
-      }
-    } catch {
-      /* ignore */
-    }
-  })
+  await repo.registerPushSubscription(subscription.toJSON())
+  registerForegroundMessageListener()
 }
-

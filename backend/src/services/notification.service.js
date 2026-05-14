@@ -1,42 +1,72 @@
-import { admin, firebaseApp, isFirebaseConfigured } from '../config/firebase.js';
+import webPush from 'web-push';
 
-export const buildUserTopic = (userId) => `user_${userId}`;
+import { env } from '../config/env.js';
+import {
+  deleteNotificationSubscriptionByEndpoint,
+  listNotificationSubscriptionsForUsers,
+} from '../repositories/notification.repository.js';
+
+const isWebPushConfigured = Boolean(
+  env.webPush.publicKey && env.webPush.privateKey && env.webPush.subject,
+);
+
+if (isWebPushConfigured) {
+  webPush.setVapidDetails(
+    env.webPush.subject,
+    env.webPush.publicKey,
+    env.webPush.privateKey,
+  );
+}
+
+export const getPublicVapidKey = () => ({
+  configured: isWebPushConfigured,
+  publicKey: env.webPush.publicKey,
+});
 
 export const sendToUsers = async ({ userIds, title, body, data = {} }) => {
-  console.log(`\n🔔 [TESTING] Sending Notification to ${userIds.length} users:`);
-  console.log(`Title: "${title}"\nBody: "${body}"\nData:`, data);
-  console.log('---');
+  const uniqueUserIds = [...new Set(userIds.map(Number).filter(Boolean))];
 
-  if (!firebaseApp || !isFirebaseConfigured) {
-    console.log('Firebase not configured. Mocking notification success.');
+  if (!isWebPushConfigured) {
     return {
       configured: false,
-      requested: userIds.length,
-      sent: userIds.length,
+      requested: uniqueUserIds.length,
+      sent: 0,
+      failed: 0,
     };
   }
 
-  const messages = userIds.map((userId) => ({
-    topic: buildUserTopic(userId),
+  const subscriptions = await listNotificationSubscriptionsForUsers(uniqueUserIds);
+  const payload = JSON.stringify({
     notification: {
       title,
       body,
-    },
-    data: {
-      ...Object.entries(data).reduce((accumulator, [key, value]) => {
-        accumulator[key] = String(value);
+      data: Object.entries(data).reduce((accumulator, [key, value]) => {
+        accumulator[key] = value == null ? '' : String(value);
         return accumulator;
       }, {}),
     },
-  }));
+  });
 
-  const response = await admin.messaging().sendEach(messages);
+  const results = await Promise.allSettled(
+    subscriptions.map(async ({ endpoint, subscription }) => {
+      try {
+        await webPush.sendNotification(subscription, payload);
+      } catch (error) {
+        if (error?.statusCode === 404 || error?.statusCode === 410) {
+          await deleteNotificationSubscriptionByEndpoint(endpoint);
+        }
+        throw error;
+      }
+    }),
+  );
+
+  const sent = results.filter((result) => result.status === 'fulfilled').length;
 
   return {
     configured: true,
-    requested: userIds.length,
-    sent: response.successCount,
-    failed: response.failureCount,
+    requested: uniqueUserIds.length,
+    subscriptions: subscriptions.length,
+    sent,
+    failed: results.length - sent,
   };
 };
-
