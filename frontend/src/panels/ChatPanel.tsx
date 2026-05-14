@@ -3,8 +3,10 @@ import type { ChatMessage, ChatUser } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Send, MessageSquare, Clock, AlertCircle, Paperclip, X, File, Image as ImageIcon, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -96,32 +98,50 @@ export function ChatPanel() {
     }
   }
 
-  const renderMessageText = (msg: ChatMessage, isMe: boolean) => {
-    if (!msg.mentionedUsers?.length) return <span>{msg.messageText}</span>
+  const prepareMarkdown = (msg: ChatMessage) => {
+    let md = msg.messageText || ''
+    if (msg.mentionedUsers?.length) {
+      msg.mentionedUsers.forEach(u => {
+        const usernameWithoutSpaces = u.name.replace(/\s+/g, '')
+        const escaped = usernameWithoutSpaces.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const regex = new RegExp(`@${escaped}\\b`, 'gi')
+        md = md.replace(regex, `[@${usernameWithoutSpaces}](mention:${usernameWithoutSpaces})`)
+      })
+    }
+    return md
+  }
 
-    const parts = msg.messageText.split(/(@\w+)/g)
-    return parts.map((part, i) => {
-      if (part.startsWith('@')) {
-        const username = part.slice(1).toLowerCase()
-        const isMentioned = msg.mentionedUsers.some(u =>
-          u.name.replace(/\s+/g, '').toLowerCase() === username
-        )
-        if (isMentioned) {
-          return (
-            <span
-              key={i}
-              className={cn(
-                "font-bold",
-                isMe ? "text-black" : "text-primary drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-              )}
-            >
-              {part}
-            </span>
-          )
-        }
-      }
-      return <span key={i}>{part}</span>
-    })
+  const renderMessageText = (msg: ChatMessage, isMe: boolean) => {
+    const md = prepareMarkdown(msg)
+    return (
+      <div className="break-words">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a: ({ node, href, children, ...props }) => {
+              if (href?.startsWith('mention:')) {
+                return (
+                  <span className={cn("font-bold", isMe ? "text-white" : "text-primary drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]")}>
+                    {children}
+                  </span>
+                )
+              }
+              return <a href={href} target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80" {...props}>{children}</a>
+            },
+            p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap leading-relaxed">{children}</p>,
+            ul: ({ children }) => <ul className="list-disc pl-5 mb-2 last:mb-0 space-y-1">{children}</ul>,
+            ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 last:mb-0 space-y-1">{children}</ol>,
+            li: ({ children }) => <li>{children}</li>,
+            strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+            em: ({ children }) => <em className="italic">{children}</em>,
+            code: ({ children }) => <code className="bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded text-[0.85em] font-mono">{children}</code>,
+            pre: ({ children }) => <pre className="bg-black/10 dark:bg-white/10 p-2 rounded text-[0.85em] font-mono overflow-x-auto mb-2 last:mb-0">{children}</pre>,
+          }}
+        >
+          {md}
+        </ReactMarkdown>
+      </div>
+    )
   }
 
   const renderAttachment = (url: string, name: string) => {
@@ -285,21 +305,63 @@ export function ChatPanel() {
                   >
                     <Paperclip className="w-4 h-4" />
                   </Button>
-                  <Input
-                    placeholder="Write a message..."
+                  <Textarea
+                    placeholder="Write a message... (Markdown supported, Shift+Enter for new line)"
                     value={text}
                     disabled={sending || !!err}
                     onChange={(e) => {
                       const val = e.target.value
                       setText(val)
                       const lastAt = val.lastIndexOf('@')
-                      if (lastAt !== -1 && !val.includes(' ', lastAt)) {
+                      if (lastAt !== -1 && !val.includes(' ', lastAt) && !val.includes('\n', lastAt)) {
                         setMentionSearch(val.slice(lastAt + 1).toLowerCase())
                       } else {
                         setMentionSearch(null)
                       }
                     }}
-                    className="bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:ring-primary/50"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        if (text.trim() || attachment) void send()
+                        return
+                      }
+
+                      if (e.ctrlKey || e.metaKey) {
+                        const key = e.key.toLowerCase()
+                        if (['b', 'i', 'u', 'm'].includes(key)) {
+                          e.preventDefault()
+                          const textarea = e.currentTarget
+                          const start = textarea.selectionStart
+                          const end = textarea.selectionEnd
+                          const selected = text.slice(start, end)
+                          let newText = text
+                          let newCursorPos = start
+
+                          if (key === 'b') {
+                            newText = text.slice(0, start) + `**${selected}**` + text.slice(end)
+                            newCursorPos = selected ? end + 4 : start + 2
+                          } else if (key === 'i') {
+                            newText = text.slice(0, start) + `*${selected}*` + text.slice(end)
+                            newCursorPos = selected ? end + 2 : start + 1
+                          } else if (key === 'u') {
+                            const lineStart = text.lastIndexOf('\n', start - 1) + 1
+                            newText = text.slice(0, lineStart) + '- ' + text.slice(lineStart)
+                            newCursorPos = start + 2
+                          } else if (key === 'm') {
+                            const lineStart = text.lastIndexOf('\n', start - 1) + 1
+                            newText = text.slice(0, lineStart) + '1. ' + text.slice(lineStart)
+                            newCursorPos = start + 3
+                          }
+
+                          setText(newText)
+                          setTimeout(() => {
+                            textarea.focus()
+                            textarea.setSelectionRange(newCursorPos, newCursorPos)
+                          }, 0)
+                        }
+                      }
+                    }}
+                    className="min-h-[40px] max-h-[150px] bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:ring-primary/50 resize-none py-2"
                   />
                   <Button
                     type="submit"
