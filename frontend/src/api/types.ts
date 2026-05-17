@@ -47,6 +47,7 @@ export type PlacementFormSummary = {
   companyName?: string | null
   questionCount?: number | null
   responseCount?: number | null
+  acceptingResponses?: boolean
 }
 
 export type FormQuestion = {
@@ -54,6 +55,7 @@ export type FormQuestion = {
   questionText: string
   fieldType: string
   options: string[]
+  folderLink?: string | null
   isRequired: boolean
   answer?: string | null
 }
@@ -155,6 +157,7 @@ export function parseFormSummary(json: Record<string, unknown>): PlacementFormSu
       json.questionCount != null ? num(json.questionCount) : null,
     responseCount:
       json.responseCount != null ? num(json.responseCount) : null,
+    acceptingResponses: json.acceptingResponses !== undefined ? Boolean(json.acceptingResponses) : true,
   }
 }
 
@@ -164,6 +167,7 @@ export function parseFormQuestion(json: Record<string, unknown>): FormQuestion {
     questionText: String(json.questionText ?? ''),
     fieldType: String(json.fieldType ?? 'text'),
     options: Array.isArray(json.options) ? json.options.map(String) : [],
+    folderLink: json.folderLink as string | null | undefined,
     isRequired: Boolean(json.isRequired),
     answer: json.answer as string | null | undefined,
   }

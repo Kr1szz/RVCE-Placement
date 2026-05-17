@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { 
   Dialog, 
   DialogContent, 
@@ -52,7 +53,9 @@ import {
   FileText,
   Users,
   Unlock,
-  Trash2
+  Trash2,
+  HardDrive,
+  Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AdminPanelSkeleton } from '@/components/modern/Skeleton'
@@ -102,8 +105,9 @@ export function AdminPanel() {
   interface BuilderQuestion {
     id: string
     questionText: string
-    fieldType: 'text' | 'number' | 'boolean' | 'dropdown'
+    fieldType: 'text' | 'number' | 'boolean' | 'dropdown' | 'file'
     options: string
+    folderLink?: string
     isRequired: boolean
   }
 
@@ -111,7 +115,7 @@ export function AdminPanel() {
   const [fFormType, setFFormType] = useState<'general' | 'company'>('general')
   const [fCompanyId, setFCompanyId] = useState<string>('')
   const [formQuestions, setFormQuestions] = useState<BuilderQuestion[]>([
-    { id: 'q-1', questionText: '', fieldType: 'text', options: '', isRequired: false }
+    { id: 'q-1', questionText: '', fieldType: 'text', options: '', folderLink: '', isRequired: false }
   ])
 
   // Export
@@ -200,6 +204,7 @@ export function AdminPanel() {
         questionText: '',
         fieldType: 'text',
         options: '',
+        folderLink: '',
         isRequired: false
       }
     ])
@@ -239,6 +244,9 @@ export function AdminPanel() {
       if (q.fieldType === 'dropdown' && !q.options.trim()) {
         return toast.error(`Question #${i + 1} (Dropdown) needs at least one option.`)
       }
+      if (q.fieldType === 'file' && !q.folderLink?.trim()) {
+        return toast.error(`Question #${i + 1} (File Upload) requires a Google Drive folder link.`)
+      }
     }
 
     return run(async () => {
@@ -267,6 +275,7 @@ export function AdminPanel() {
           questionText: q.questionText.trim(),
           fieldType: q.fieldType,
           options: parsedOptions,
+          folderLink: q.fieldType === 'file' ? q.folderLink?.trim() || null : null,
         })
 
         const qId = (createdQuestion as any)?.id
@@ -289,7 +298,7 @@ export function AdminPanel() {
       setFFormType('general')
       setFCompanyId('')
       setFormQuestions([
-        { id: 'q-1', questionText: '', fieldType: 'text', options: '', isRequired: false }
+        { id: 'q-1', questionText: '', fieldType: 'text', options: '', folderLink: '', isRequired: false }
       ])
     }, 'Form created and published to students successfully!')
   }
@@ -335,6 +344,12 @@ export function AdminPanel() {
     void run(async () => {
       await repo.deleteForm(formId)
     }, 'Form deleted.')
+  }
+
+  const handleToggleResponses = (formId: number, checked: boolean) => {
+    void run(async () => {
+      await repo.toggleFormResponses(formId, checked)
+    }, checked ? 'Form is now accepting student responses.' : 'Form is now closed to new responses.')
   }
 
   const toggleCompanyStatus = (companyId: number, currentStatus: string | undefined) =>
@@ -397,6 +412,53 @@ export function AdminPanel() {
     )
   }
 
+  // 1. Open Forms Count
+  const openFormsCount = data.forms.filter(f => {
+    if (!f.companyId) return true; // General forms are always open
+    const company = data.companies.find(c => c.id === f.companyId);
+    if (!company) return true;
+    if (company.status === 'completed') return false;
+    if (company.deadline && new Date(company.deadline) < new Date()) return false;
+    return true;
+  }).length;
+
+  // 2. Active Drives Count (Unique Google Drive upload folders set up in form questions)
+  const activeDrivesCount = new Set(
+    data.questions
+      .filter(q => q.fieldType === 'file' && q.folderLink?.trim())
+      .map(q => q.folderLink!.trim())
+  ).size;
+
+  // 3. Sum of all pending submissions across all active/open forms
+  let totalPendingSubmissions = 0;
+  data.forms.forEach(f => {
+    let isOpen = true;
+    if (f.companyId) {
+      const company = data.companies.find(c => c.id === f.companyId);
+      if (company) {
+        if (company.status === 'completed') isOpen = false;
+        if (company.deadline && new Date(company.deadline) < new Date()) isOpen = false;
+      }
+    }
+    if (!isOpen) return;
+
+    let assignedCount = 0;
+    if (!f.companyId) {
+      assignedCount = data.students.length;
+    } else {
+      const company = data.companies.find(c => c.id === f.companyId);
+      if (company) {
+        assignedCount = data.students.filter(s => s.ugCgpa >= company.minCgpa).length;
+      } else {
+        assignedCount = data.students.length;
+      }
+    }
+
+    const submittedCount = f.responseCount || 0;
+    const pendingForForm = Math.max(0, assignedCount - submittedCount);
+    totalPendingSubmissions += pendingForForm;
+  });
+
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700">
       <div className="flex flex-col gap-1">
@@ -413,7 +475,7 @@ export function AdminPanel() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="glass-panel">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
@@ -425,25 +487,17 @@ export function AdminPanel() {
             <Card className="glass-panel">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
-                  <Users className="w-4 h-4" /> Total Students
+                  <FileText className="w-4 h-4" /> Open Forms
                 </CardTitle>
-                <div className="text-3xl font-bold text-slate-900 dark:text-white">{data.students.length}</div>
+                <div className="text-3xl font-bold text-slate-900 dark:text-white">{openFormsCount}</div>
               </CardHeader>
             </Card>
             <Card className="glass-panel">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Forms Shared
+                  <Clock className="w-4 h-4" /> Pending Submissions
                 </CardTitle>
-                <div className="text-3xl font-bold text-slate-900 dark:text-white">{data.forms.length}</div>
-              </CardHeader>
-            </Card>
-            <Card className="glass-panel">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
-                  <FileQuestion className="w-4 h-4" /> Question Bank
-                </CardTitle>
-                <div className="text-3xl font-bold text-slate-900 dark:text-white">{data.questions.length}</div>
+                <div className="text-3xl font-bold text-slate-900 dark:text-white">{totalPendingSubmissions}</div>
               </CardHeader>
             </Card>
           </div>
@@ -693,6 +747,7 @@ export function AdminPanel() {
                               <SelectItem value="number">Number</SelectItem>
                               <SelectItem value="boolean">Yes / No</SelectItem>
                               <SelectItem value="dropdown">Dropdown Options</SelectItem>
+                              <SelectItem value="file">File Upload</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -709,6 +764,20 @@ export function AdminPanel() {
                             onChange={e => updateBuilderQuestion(q.id, { options: e.target.value })}
                           />
                           <p className="text-[10px] text-slate-400 dark:text-slate-500">Provide comma-separated values to define the items in the dropdown menu.</p>
+                        </div>
+                      )}
+
+                      {/* File Upload Folder Link Input */}
+                      {q.fieldType === 'file' && (
+                        <div className="px-4 space-y-2 animate-in slide-in-from-top-2 duration-300">
+                          <Label className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Google Drive Folder Link</Label>
+                          <Input 
+                            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white h-11"
+                            placeholder="e.g. https://drive.google.com/drive/folders/..." 
+                            value={q.folderLink || ''} 
+                            onChange={e => updateBuilderQuestion(q.id, { folderLink: e.target.value })}
+                          />
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500">Provide the Google Drive folder link where student uploads will be stored.</p>
                         </div>
                       )}
 
@@ -763,10 +832,31 @@ export function AdminPanel() {
             <CardContent>
               <div className="space-y-4">
                 {(showAllForms ? data.forms : data.forms.slice(0, 10)).map(f => (
-                  <div key={f.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:bg-white/10 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-900 dark:text-white truncate">{f.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{f.responseCount || 0} responses</p>
+                  <div key={f.id} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:bg-white/10 transition-colors">
+                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-4">
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-900 dark:text-white truncate flex items-center gap-2">
+                          {f.title}
+                          {f.acceptingResponses === false && (
+                            <Badge variant="outline" className="text-[10px] border-red-500/20 bg-red-500/10 text-red-400 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              Closed
+                            </Badge>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">{f.responseCount || 0} responses</p>
+                      </div>
+                      
+                      {/* Accepting Responses Switch */}
+                      <div className="flex items-center gap-2.5 sm:ml-auto border border-slate-200 dark:border-white/10 p-2 rounded-xl bg-slate-50/50 dark:bg-white/5 px-3 max-w-fit shadow-inner">
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          {f.acceptingResponses !== false ? "Accepting responses" : "Closed"}
+                        </span>
+                        <Switch 
+                          checked={f.acceptingResponses !== false} 
+                          onCheckedChange={(checked) => handleToggleResponses(f.id, checked)}
+                          disabled={busy}
+                        />
+                      </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Button variant="outline" size="sm" onClick={() => void openResponses(f.id, f.title)} className="border-slate-200 dark:border-white/20 text-slate-900 dark:text-white hover:bg-slate-200 dark:bg-white/10 gap-2">
@@ -904,8 +994,26 @@ export function AdminPanel() {
                         <TableRow key={i} className="border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:bg-white/5">
                           <TableCell className="font-medium whitespace-nowrap text-slate-900 dark:text-white">{r.studentName}</TableCell>
                           <TableCell className="font-mono text-xs whitespace-nowrap text-muted-foreground">{r.usn}</TableCell>
-                          {r.answers.map(a => (
-                            <TableCell key={a.id} className="text-muted-foreground whitespace-nowrap">{a.answer ?? '—'}</TableCell>
+                           {r.answers.map(a => (
+                            <TableCell key={a.id} className="text-muted-foreground whitespace-nowrap">
+                              {a.answer ? (
+                                a.answer.startsWith('http') ? (
+                                  <a 
+                                    href={a.answer} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-primary hover:underline font-bold inline-flex items-center gap-1"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                    View File
+                                  </a>
+                                ) : (
+                                  a.answer
+                                )
+                              ) : (
+                                '—'
+                              )}
+                            </TableCell>
                           ))}
                         </TableRow>
                       ))}
