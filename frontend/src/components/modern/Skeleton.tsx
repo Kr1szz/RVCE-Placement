@@ -9,14 +9,16 @@ interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {
   tone?: SkeletonTone;
 }
 
+// Beautiful, neutral tone classes that match both light and dark modes perfectly.
+// Hardcoded colored backgrounds (yellow/red/blue/green) are replaced with sleek, cohesive slate-grays.
 const toneClasses: Record<SkeletonTone, string> = {
   dark: "bg-slate-200 dark:bg-white/10",
-  light: "bg-slate-200/80",
-  soft: "bg-sky-100/80",
-  green: "bg-emerald-500/25",
-  blue: "bg-blue-500/25",
-  gold: "bg-yellow-500/25",
-  red: "bg-red-500/25",
+  light: "bg-slate-200/80 dark:bg-white/5",
+  soft: "bg-slate-100 dark:bg-white/5",
+  green: "bg-slate-200 dark:bg-white/10",
+  blue: "bg-slate-200 dark:bg-white/10",
+  gold: "bg-slate-200 dark:bg-white/10",
+  red: "bg-slate-200 dark:bg-white/10",
 };
 
 const range = (count: number) => Array.from({ length: count }, (_, index) => index);
@@ -94,8 +96,8 @@ export function SkeletonText({
 export function AuthCardSkeleton() {
   return (
     <LoadingRegion label="Loading sign in controls" className="w-full">
-      <div className="rounded-[2rem] bg-[#3f4245] p-6 shadow-2xl">
-        <div className="mb-8 grid grid-cols-2 gap-2 rounded-full bg-[#dbeeff] p-1.5">
+      <div className="rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-6 shadow-2xl">
+        <div className="mb-8 grid grid-cols-2 gap-2 rounded-full bg-slate-100 dark:bg-white/5 p-1.5">
           <Skeleton tone="soft" className="h-11 rounded-full bg-white" />
           <Skeleton tone="soft" className="h-11 rounded-full" />
         </div>
@@ -112,7 +114,7 @@ export function AuthCardSkeleton() {
 export function StudentProfileSkeleton() {
   return (
     <LoadingRegion label="Loading student profile" className="space-y-5">
-      <div className="rounded-[2rem] bg-[#121212] p-5 shadow-2xl ring-1 ring-white/10">
+      <div className="rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-5 shadow-2xl">
         <div className="mb-8 flex items-center gap-4">
           <Skeleton tone="gold" className="size-20 shrink-0 rounded-[1.65rem]" />
           <div className="w-full min-w-0 space-y-2">
@@ -130,7 +132,7 @@ export function StudentProfileSkeleton() {
           ))}
         </div>
       </div>
-      <div className="rounded-[1.75rem] bg-[#303030] p-4 shadow-xl ring-1 ring-white/10">
+      <div className="rounded-[1.75rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <Skeleton className="h-4 w-20 rounded-full" />
           <Skeleton tone="green" className="h-8 w-28 rounded-full" />
@@ -157,7 +159,7 @@ export function StudentDashboardSkeleton() {
         <Skeleton className="aspect-square rounded-[1.75rem]" />
       </div>
       <Skeleton className="mx-auto h-11 w-40 rounded-full" />
-      <div className="rounded-[1.75rem] bg-[#303030] p-4 shadow-2xl">
+      <div className="rounded-[1.75rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-4 shadow-2xl">
         <Skeleton className="mb-3 h-4 w-36 rounded-full" />
         <div className="space-y-2">
           {range(3).map((row) => (
@@ -173,7 +175,7 @@ export function SPCVerificationSkeleton() {
   return (
     <LoadingRegion label="Loading verification table" className="space-y-6">
       <Skeleton tone="light" className="mx-auto h-3 w-64 rounded-full" />
-      <div className="rounded-[2rem] bg-[#121212] p-5 shadow-2xl ring-1 ring-white/10">
+      <div className="rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-5 shadow-2xl">
         <div className="mb-4 grid grid-cols-4 gap-3 px-2">
           {range(4).map((heading) => (
             <Skeleton key={heading} className="h-3 rounded-full" />
@@ -204,7 +206,7 @@ export function SPCOverviewSkeleton() {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {range(2).map((card) => (
-          <div key={card} className="rounded-[1.5rem] bg-[#303030] p-3 shadow-xl">
+          <div key={card} className="rounded-[1.5rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-3 shadow-xl">
             <Skeleton className="mb-3 h-4 w-32 rounded-full" />
             <div className="space-y-2">
               {range(3).map((row) => (
@@ -224,7 +226,7 @@ export function CompanyListSkeleton({ count = 3 }: { count?: number }) {
       {range(count).map((company) => (
         <div
           key={company}
-          className="flex items-center gap-4 rounded-[1.75rem] bg-[#121212] p-4 shadow-2xl ring-1 ring-white/10"
+          className="flex items-center gap-4 rounded-[1.75rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-4 shadow-2xl"
         >
           <Skeleton tone="light" className="size-16 shrink-0 rounded-full" />
           <div className="flex-1 space-y-2">
@@ -245,7 +247,7 @@ export function CompanyListSkeleton({ count = 3 }: { count?: number }) {
 export function ApplicationFormSkeleton() {
   return (
     <LoadingRegion label="Loading application form">
-      <div className="min-h-[460px] rounded-[2rem] bg-[#121212] p-6 shadow-2xl ring-1 ring-white/10">
+      <div className="min-h-[460px] rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-6 shadow-2xl">
         <Skeleton className="mb-2 h-3 w-28 rounded-full" />
         <Skeleton className="mb-14 h-5 w-40 rounded-full" />
         <Skeleton className="mx-auto mb-4 h-10 w-full max-w-xs rounded-full" />
@@ -259,7 +261,7 @@ export function ApplicationFormSkeleton() {
 export function CreateDriveSkeleton() {
   return (
     <LoadingRegion label="Loading create drive form">
-      <div className="rounded-[2rem] bg-[#121212] p-6 shadow-2xl ring-1 ring-white/10">
+      <div className="rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-6 shadow-2xl">
         <div className="space-y-3">
           {range(6).map((field) => (
             <Skeleton

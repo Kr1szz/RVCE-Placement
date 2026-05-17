@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { useProfileStore } from '../store/useProfileStore'
 import { toast } from 'sonner'
@@ -9,14 +9,17 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, AlertCircle, Upload, Save, FileText, Clock, Unlock, Camera, Moon, Sun, User } from 'lucide-react'
 import { StudentProfileSkeleton } from '@/components/modern/Skeleton'
+import { ApiClientError } from '../api/client'
+import type { AppUser } from '../api/types'
 
-const FormField = ({ label, value, onChange, id, type = 'text', disabled = false }: {
+const FormField = ({ label, value, onChange, id, type = 'text', disabled = false, error }: {
   label: string
   value: string
   onChange: (v: string) => void
   id: string
   type?: string
   disabled?: boolean
+  error?: string
 }) => (
   <div className="space-y-2">
     <Label htmlFor={id} className="text-sm font-medium text-slate-600 dark:text-muted-foreground">{label}</Label>
@@ -26,13 +29,32 @@ const FormField = ({ label, value, onChange, id, type = 'text', disabled = false
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className="border-slate-200 bg-white text-slate-950 focus:ring-primary/50 dark:border-white/10 dark:bg-white/5 dark:text-white"
+      className={`border-slate-200 bg-white text-slate-950 focus:ring-primary/50 dark:border-white/10 dark:bg-white/5 dark:text-white ${
+        error ? 'border-destructive focus-visible:ring-destructive focus:ring-destructive/50' : ''
+      }`}
     />
+    {error && (
+      <p className="text-xs text-destructive font-medium animate-in fade-in duration-200 mt-1">
+        {error}
+      </p>
+    )}
   </div>
 )
 
 export function ProfilePanel() {
   const { theme, setTheme } = useTheme()
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  const handleFieldChange = (field: keyof AppUser, value: any) => {
+    setDraftField(field, value)
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      })
+    }
+  }
   const { 
     profile: user, 
     draft, 
@@ -54,11 +76,36 @@ export function ProfilePanel() {
   const readOnly = Boolean(user?.verified) || saving
 
   const onSave = async () => {
+    setFieldErrors({})
     try {
       await saveProfile()
       toast.success('Profile updated.')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e))
+      if (e instanceof ApiClientError && e.details && Array.isArray(e.details)) {
+        const errors: Record<string, string> = {}
+        e.details.forEach((err: any) => {
+          const path = Array.isArray(err.path) ? err.path.join('.') : ''
+          if (path) {
+            let errMessage = err.message || 'Invalid value'
+            if (err.code === 'invalid_format' && err.format === 'email') {
+              errMessage = 'Invalid email address'
+            } else if (err.code === 'invalid_format' && err.format === 'regex' && err.pattern === '/^\\d+$/') {
+              errMessage = 'Must contain only digits'
+            } else if (err.code === 'too_small' && err.type === 'string') {
+              errMessage = `Must be at least ${err.minimum} characters`
+            } else if (err.code === 'too_big' && err.type === 'string') {
+              errMessage = `Must be at most ${err.maximum} characters`
+            } else if (err.message && err.message.startsWith('Invalid string: must match pattern')) {
+              errMessage = 'Invalid format'
+            }
+            errors[path] = errMessage
+          }
+        })
+        setFieldErrors(errors)
+        toast.error('Validation failed. Please check the marked fields.')
+      } else {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     }
   }
 
@@ -254,18 +301,18 @@ export function ProfilePanel() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FormField label="Full Name" value={draft.name ?? ''} onChange={(v) => setDraftField('name', v)} id="pf-name" disabled={readOnly} />
-            <FormField label="USN" value={draft.usn ?? ''} onChange={(v) => setDraftField('usn', v)} id="pf-usn" disabled={readOnly} />
-            <FormField label="College Email" value={draft.collegeEmailId ?? ''} onChange={(v) => setDraftField('collegeEmailId', v)} id="pf-ce" type="email" disabled={readOnly} />
-            <FormField label="Personal Email" value={draft.personalEmailId ?? ''} onChange={(v) => setDraftField('personalEmailId', v)} id="pf-pe" type="email" disabled={readOnly} />
-            <FormField label="Phone Number" value={draft.phoneNumber ?? ''} onChange={(v) => setDraftField('phoneNumber', v)} id="pf-phone" disabled={readOnly} />
-            <FormField label="Aadhar Number" value={draft.aadhar ?? ''} onChange={(v) => setDraftField('aadhar', v)} id="pf-aadhar" disabled={readOnly} />
-            <FormField label="LinkedIn URL" value={draft.linkedIn ?? ''} onChange={(v) => setDraftField('linkedIn', v)} id="pf-li" disabled={readOnly} />
-            <FormField label="GitHub URL" value={draft.gitHub ?? ''} onChange={(v) => setDraftField('gitHub', v)} id="pf-gh" disabled={readOnly} />
-            <FormField label="UG CGPA" value={String(draft.ugCgpa ?? '')} onChange={(v) => setDraftField('ugCgpa', v)} id="pf-cgpa" type="number" disabled={readOnly} />
-            <FormField label="1st Sem SGPA" value={String(draft.firstSemSgpa ?? '')} onChange={(v) => setDraftField('firstSemSgpa', v)} id="pf-fs" type="number" disabled={readOnly} />
-            <FormField label="10th Aggregate (%)" value={String(draft.tenthMarks ?? '')} onChange={(v) => setDraftField('tenthMarks', v)} id="pf-10" type="number" disabled={readOnly} />
-            <FormField label="12th Aggregate (%)" value={String(draft.twelfthMarks ?? '')} onChange={(v) => setDraftField('twelfthMarks', v)} id="pf-12" type="number" disabled={readOnly} />
+            <FormField label="Full Name" value={draft.name ?? ''} onChange={(v) => handleFieldChange('name', v)} id="pf-name" disabled={readOnly} error={fieldErrors.name} />
+            <FormField label="USN" value={draft.usn ?? ''} onChange={(v) => handleFieldChange('usn', v)} id="pf-usn" disabled={readOnly} error={fieldErrors.usn} />
+            <FormField label="College Email" value={draft.collegeEmailId ?? ''} onChange={(v) => handleFieldChange('collegeEmailId', v)} id="pf-ce" type="email" disabled={readOnly} error={fieldErrors.collegeEmailId} />
+            <FormField label="Personal Email" value={draft.personalEmailId ?? ''} onChange={(v) => handleFieldChange('personalEmailId', v)} id="pf-pe" type="email" disabled={readOnly} error={fieldErrors.personalEmailId} />
+            <FormField label="Phone Number" value={draft.phoneNumber ?? ''} onChange={(v) => handleFieldChange('phoneNumber', v)} id="pf-phone" disabled={readOnly} error={fieldErrors.phoneNumber} />
+            <FormField label="Aadhar Number" value={draft.aadhar ?? ''} onChange={(v) => handleFieldChange('aadhar', v)} id="pf-aadhar" disabled={readOnly} error={fieldErrors.aadhar} />
+            <FormField label="LinkedIn URL" value={draft.linkedIn ?? ''} onChange={(v) => handleFieldChange('linkedIn', v)} id="pf-li" disabled={readOnly} error={fieldErrors.linkedIn} />
+            <FormField label="GitHub URL" value={draft.gitHub ?? ''} onChange={(v) => handleFieldChange('gitHub', v)} id="pf-gh" disabled={readOnly} error={fieldErrors.gitHub} />
+            <FormField label="UG CGPA" value={String(draft.ugCgpa ?? '')} onChange={(v) => handleFieldChange('ugCgpa', v)} id="pf-cgpa" type="number" disabled={readOnly} error={fieldErrors.ugCgpa} />
+            <FormField label="1st Sem SGPA" value={String(draft.firstSemSgpa ?? '')} onChange={(v) => handleFieldChange('firstSemSgpa', v)} id="pf-fs" type="number" disabled={readOnly} error={fieldErrors.firstSemSgpa} />
+            <FormField label="10th Aggregate (%)" value={String(draft.tenthMarks ?? '')} onChange={(v) => handleFieldChange('tenthMarks', v)} id="pf-10" type="number" disabled={readOnly} error={fieldErrors.tenthMarks} />
+            <FormField label="12th Aggregate (%)" value={String(draft.twelfthMarks ?? '')} onChange={(v) => handleFieldChange('twelfthMarks', v)} id="pf-12" type="number" disabled={readOnly} error={fieldErrors.twelfthMarks} />
           </div>
         </CardContent>
         <CardFooter className="justify-end border-t border-slate-200 p-4 bg-slate-50 dark:border-white/10 dark:bg-white/5 sm:p-6">
