@@ -88,6 +88,12 @@ export type ChatMessage = {
   attachmentName?: string | null
   createdAt: string
   mentionedUsers: ChatUser[]
+  parentId?: number | null
+  parentMessage?: {
+    id: number
+    senderName: string
+    messageText: string
+  } | null
 }
 
 export type ChatMessagesResponse = {
@@ -210,6 +216,7 @@ export function parseChatUser(json: Record<string, unknown>): ChatUser {
 
 export function parseChatMessage(json: Record<string, unknown>): ChatMessage {
   const mentionedRaw = json.mentionedUsers as unknown[] | undefined
+  const parentRaw = json.parentMessage as Record<string, unknown> | null | undefined
   return {
     id: num(json.id),
     sender: parseChatUser((json.sender as Record<string, unknown>) ?? {}),
@@ -220,5 +227,11 @@ export function parseChatMessage(json: Record<string, unknown>): ChatMessage {
     mentionedUsers: (mentionedRaw ?? []).map((item) =>
       parseChatUser(item as Record<string, unknown>),
     ),
+    parentId: json.parentId != null ? Number(json.parentId) : undefined,
+    parentMessage: parentRaw ? {
+      id: num(parentRaw.id),
+      senderName: String(parentRaw.senderName ?? ''),
+      messageText: String(parentRaw.messageText ?? ''),
+    } : null,
   }
 }

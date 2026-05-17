@@ -215,3 +215,11 @@ EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN
   ALTER TABLE "users" ADD COLUMN "profile_picture_url" text;
 EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "messages" ADD COLUMN "parent_id" int;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "messages" ADD CONSTRAINT "fk_messages_parent_id" FOREIGN KEY ("parent_id") REFERENCES "messages" ("id") ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

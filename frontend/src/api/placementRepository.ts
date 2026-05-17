@@ -265,15 +265,18 @@ export class PlacementRepository {
     return this.client.getBytes(`/companies/${companyId}/export${q}`)
   }
 
-  async sendMessage(messageText: string, file?: File): Promise<ChatMessage> {
+  async sendMessage(messageText: string, file?: File, parentId?: number): Promise<ChatMessage> {
     let json: Record<string, unknown>
     if (file) {
       const form = new FormData()
       form.append('messageText', messageText)
       form.append('attachment', file)
+      if (parentId !== undefined) {
+        form.append('parentId', String(parentId))
+      }
       json = await this.client.postFormData('/messages', form)
     } else {
-      json = await this.client.postJson('/messages', { messageText })
+      json = await this.client.postJson('/messages', { messageText, parentId })
     }
     return parseChatMessage(json)
   }

@@ -43,7 +43,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Plus, 
-  Send, 
   CheckCircle2, 
   AlertCircle,
   Download,
@@ -54,7 +53,6 @@ import {
   Users,
   Unlock,
   Trash2,
-  HardDrive,
   Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -422,12 +420,7 @@ export function AdminPanel() {
     return true;
   }).length;
 
-  // 2. Active Drives Count (Unique Google Drive upload folders set up in form questions)
-  const activeDrivesCount = new Set(
-    data.questions
-      .filter(q => q.fieldType === 'file' && q.folderLink?.trim())
-      .map(q => q.folderLink!.trim())
-  ).size;
+
 
   // 3. Sum of all pending submissions across all active/open forms
   let totalPendingSubmissions = 0;
