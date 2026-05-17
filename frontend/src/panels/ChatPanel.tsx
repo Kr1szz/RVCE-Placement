@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatUser } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import { toast } from 'sonner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Send, MessageSquare, Clock, AlertCircle, Paperclip, X, File, Image as ImageIcon, Trash2 } from 'lucide-react'
+import { Send, Clock, AlertCircle, Paperclip, X, File, Image as ImageIcon, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function ChatPanel() {
@@ -25,22 +25,71 @@ export function ChatPanel() {
   const [users, setUsers] = useState<ChatUser[]>([])
   const [mentionSearch, setMentionSearch] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setErr(null)
+  const load = useCallback(async (background = false) => {
+    if (!background) {
+      setLoading(true)
+      setErr(null)
+    }
     try {
       const res = await repo.getMessages()
       setMessages([...res.messages].reverse())
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
+      if (!background) {
+        setErr(e instanceof Error ? e.message : String(e))
+      }
     } finally {
-      setLoading(false)
+      if (!background) {
+        setLoading(false)
+      }
     }
   }, [repo])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
+  }, [load])
+
+  // Real-time Service Worker Push Notification message listener
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+
+    const handleSWMessage = (event: MessageEvent) => {
+      const payload = event.data as {
+        type?: string
+        notification?: {
+          title?: string
+          body?: string
+          data?: {
+            type?: string
+            messageId?: string
+            senderId?: string
+          }
+        }
+      } | undefined
+
+      if (payload?.type !== 'PUSH_NOTIFICATION') return
+
+      const pushType = payload.notification?.data?.type
+      if (pushType === 'chat_message' || pushType === 'message_mention' || pushType === 'announcement') {
+        void load(true) // Background refresh (no loader skeletons!)
+      }
+    }
+
+    navigator.serviceWorker.addEventListener('message', handleSWMessage)
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleSWMessage)
+    }
+  }, [load])
+
+  // Periodic fallback background polling to sync messages when active
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void load(true) // Background refresh (no loader skeletons!)
+      }
+    }, 5000)
+
+    return () => clearInterval(timer)
   }, [load])
 
   useEffect(() => {
@@ -162,15 +211,8 @@ export function ChatPanel() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-12rem)] pb-20 lg:pb-8">
-      <Card className="h-full border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 backdrop-blur-xl flex flex-col overflow-hidden">
-        <CardHeader className="pb-4 border-b border-slate-200 dark:border-white/10">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-primary" />
-            Global Discussion
-          </CardTitle>
-        </CardHeader>
-
+    <div className="h-[calc(100vh-9rem)] w-full">
+      <Card className="h-full border-0 rounded-none bg-slate-100 dark:bg-white/5 backdrop-blur-xl flex flex-col overflow-hidden">
         <CardContent className="flex-1 flex flex-col p-0 overflow-hidden relative">
           {err ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-4">
@@ -250,16 +292,16 @@ export function ChatPanel() {
 
               <div className="relative p-4 border-t border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 flex flex-col gap-2">
                 {mentionSearch !== null && filteredUsers.length > 0 && (
-                  <div className="absolute bottom-full left-4 mb-2 w-64 bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
+                  <div className="absolute bottom-full left-4 mb-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden z-50">
                     {filteredUsers.map(u => (
                       <button
                         key={u.id}
                         type="button"
-                        className="w-full text-left px-4 py-2 text-sm text-slate-900 dark:text-white hover:bg-slate-200 dark:bg-white/10 transition-colors flex flex-col"
+                        className="w-full text-left px-4 py-2 text-sm text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex flex-col"
                         onClick={() => selectMention(u)}
                       >
                         <span className="font-medium">{u.name}</span>
-                        {u.email && <span className="text-xs text-slate-500 dark:text-white/50 truncate w-full">{u.email}</span>}
+                        {u.email && <span className="text-xs text-slate-500 dark:text-slate-400 truncate w-full">{u.email}</span>}
                       </button>
                     ))}
                   </div>

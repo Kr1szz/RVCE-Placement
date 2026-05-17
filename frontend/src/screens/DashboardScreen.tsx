@@ -15,7 +15,6 @@ import {
   Settings, 
   LogOut,
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { CollegeLogo } from '@/components/modern/CollegeLogo'
 import { cn } from '@/lib/utils'
 import { registerNotificationsSafely } from '../notifications/registerNotifications'
@@ -146,7 +145,10 @@ export default function DashboardScreen() {
         </div>
       </header>
 
-      <main className={cn("mx-auto min-h-[calc(100vh-4rem)] w-full px-3 py-4 pb-28 sm:px-5 lg:px-8", active.id === 'chat' ? "max-w-full lg:px-4" : "max-w-7xl")}>
+      <main className={cn(
+        "mx-auto min-h-[calc(100vh-4rem)] w-full px-3 py-4 pb-28 sm:px-5 lg:px-8",
+        active.id === 'chat' ? "max-w-full p-0 pb-20" : "max-w-7xl"
+      )}>
         {active.element}
       </main>
 
