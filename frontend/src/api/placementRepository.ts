@@ -150,8 +150,8 @@ export class PlacementRepository {
     questionText: string
     fieldType: string
     options?: string[]
-  }): Promise<void> {
-    await this.client.postJson('/questions', {
+  }): Promise<any> {
+    return await this.client.postJson('/questions', {
       questionText: payload.questionText,
       fieldType: payload.fieldType,
       ...(payload.options?.length ? { options: payload.options } : {}),
@@ -162,8 +162,8 @@ export class PlacementRepository {
     title: string
     type: string
     companyId?: number | null
-  }): Promise<void> {
-    await this.client.postJson('/forms', {
+  }): Promise<any> {
+    return await this.client.postJson('/forms', {
       title: payload.title,
       type: payload.type,
       companyId: payload.companyId ?? undefined,
