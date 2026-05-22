@@ -24,6 +24,14 @@ export const saveApplication = async (req, res, next) => {
       throw new ApiError(400, 'Consent or tracker is required.');
     }
 
+    if (payload.consent !== undefined && company.consentBlocked && payload.consent !== company.consent) {
+      throw new ApiError(403, 'Consent submission is blocked for this company.');
+    }
+
+    if (payload.tracker !== undefined && company.trackerBlocked && payload.tracker !== company.tracker) {
+      throw new ApiError(403, 'Tracker submission is blocked for this company.');
+    }
+
     const application = await upsertApplication({
       studentId: req.auth.userId,
       companyId,

@@ -75,6 +75,8 @@ export function parseCompany(json: Record<string, unknown>): Company {
     consent: json.consent as boolean | null | undefined,
     tracker: json.tracker as boolean | null | undefined,
     status: json.status as string | undefined,
+    consentBlocked: Boolean(json.consentBlocked),
+    trackerBlocked: Boolean(json.trackerBlocked),
   }
 }
 

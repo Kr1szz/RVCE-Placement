@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Building2, Calendar, IndianRupee, Star, Mail, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Building2, Calendar, IndianRupee, Star, Mail, CheckCircle2, AlertCircle, Lock } from 'lucide-react'
 import { formatDate } from '../lib/format'
 import { CompanyListSkeleton } from '@/components/modern/Skeleton'
 
@@ -117,15 +117,18 @@ export function CompaniesPanel() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor={`consent-${c.id}`} className="text-sm font-semibold text-slate-900 dark:text-white">Consent Provided</Label>
-                    <p className="text-xs text-muted-foreground">Willing to sit for this drive?</p>
+                    <p className="text-xs text-muted-foreground">
+                      {c.consentBlocked ? 'Consent submission is locked' : 'Willing to sit for this drive?'}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {c.consentBlocked && <Lock className="w-3.5 h-3.5 text-amber-500" />}
                     {c.consent && <CheckCircle2 className="w-4 h-4 text-green-500" />}
                     <Switch
                       id={`consent-${c.id}`}
                       checked={c.consent ?? false}
                       onCheckedChange={(v) => void onUpdate(c, { consent: v })}
-                      disabled={isBusy}
+                      disabled={c.consentBlocked || isBusy}
                       className="data-[state=checked]:bg-primary"
                     />
                   </div>
@@ -133,15 +136,18 @@ export function CompaniesPanel() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor={`tracker-${c.id}`} className="text-sm font-semibold text-slate-900 dark:text-white">Mail Tracker</Label>
-                    <p className="text-xs text-muted-foreground">Received email from company?</p>
+                    <p className="text-xs text-muted-foreground">
+                      {c.trackerBlocked ? 'Mail tracker is locked' : 'Received email from company?'}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {c.trackerBlocked && <Lock className="w-3.5 h-3.5 text-amber-500" />}
                     {c.tracker && <Mail className="w-4 h-4 text-primary" />}
                     <Switch
                       id={`tracker-${c.id}`}
                       checked={c.tracker ?? false}
                       onCheckedChange={(v) => void onUpdate(c, { tracker: v })}
-                      disabled={isBusy}
+                      disabled={c.trackerBlocked || isBusy}
                       className="data-[state=checked]:bg-primary"
                     />
                   </div>

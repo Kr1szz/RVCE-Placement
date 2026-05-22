@@ -37,6 +37,8 @@ export type Company = {
   consent?: boolean | null
   tracker?: boolean | null
   status?: string
+  consentBlocked?: boolean
+  trackerBlocked?: boolean
 }
 
 export type PlacementFormSummary = {

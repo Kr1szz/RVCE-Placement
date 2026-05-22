@@ -6,7 +6,8 @@ import {
   findCompanyById,
   listCompanies,
   listEligibleStudentsForCompany,
-  updateCompanyStatus
+  updateCompanyStatus,
+  updateCompanyBlocks
 } from '../repositories/company.repository.js';
 import { generateCompanyWorkbook } from '../services/export.service.js';
 import { ApiError } from '../utils/apiError.js';
@@ -130,6 +131,27 @@ export const updateStatus = async (req, res, next) => {
     }
 
     const updated = await updateCompanyStatus(id, status);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateBlocks = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const { consentBlocked, trackerBlocked } = req.body;
+
+    if (typeof consentBlocked !== 'boolean' || typeof trackerBlocked !== 'boolean') {
+      throw new ApiError(400, 'Invalid block values.');
+    }
+
+    const company = await findCompanyById(id);
+    if (!company) {
+      throw new ApiError(404, 'Company not found.');
+    }
+
+    const updated = await updateCompanyBlocks(id, consentBlocked, trackerBlocked);
     res.json(updated);
   } catch (error) {
     next(error);

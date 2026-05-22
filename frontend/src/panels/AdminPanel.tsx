@@ -392,6 +392,16 @@ export function AdminPanel() {
       await repo.updateCompanyStatus(companyId, newStatus)
     }, 'Company status updated.')
 
+  const toggleCompanyBlock = (companyId: number, type: 'consent' | 'tracker', currentVal: boolean) =>
+    run(async () => {
+      if (!data) return
+      const company = data.companies.find((c) => c.id === companyId)
+      if (!company) return
+      const consentBlocked = type === 'consent' ? !currentVal : (company.consentBlocked ?? false)
+      const trackerBlocked = type === 'tracker' ? !currentVal : (company.trackerBlocked ?? false)
+      await repo.updateCompanyBlocks(companyId, consentBlocked, trackerBlocked)
+    }, `Company ${type === 'consent' ? 'consent' : 'tracker'} block updated.`)
+
   const doExportCompany = () => {
     if (exportCompanyId == null) return
     const id = exportCompanyId
@@ -631,6 +641,8 @@ export function AdminPanel() {
                       <TableHead className="text-text-main font-bold">Stipend</TableHead>
                       <TableHead className="text-text-main font-bold">Min CGPA</TableHead>
                       <TableHead className="text-text-main font-bold">Status</TableHead>
+                      <TableHead className="text-text-main font-bold">Block Consent</TableHead>
+                      <TableHead className="text-text-main font-bold">Block Tracker</TableHead>
                       <TableHead className="text-right text-text-main font-bold">Export</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -645,6 +657,20 @@ export function AdminPanel() {
                           <Badge variant={c.status === 'completed' ? 'outline' : 'default'} className={cn("cursor-pointer", c.status === 'completed' ? "text-amber-400 border-amber-400/20 bg-amber-400/10" : "bg-green-500/20 text-green-400 hover:bg-green-500/30")} onClick={() => void toggleCompanyStatus(c.id, c.status)}>
                             {c.status === 'completed' ? 'Completed' : 'Ongoing'}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={c.consentBlocked ?? false}
+                            onCheckedChange={() => void toggleCompanyBlock(c.id, 'consent', c.consentBlocked ?? false)}
+                            disabled={busy}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={c.trackerBlocked ?? false}
+                            onCheckedChange={() => void toggleCompanyBlock(c.id, 'tracker', c.trackerBlocked ?? false)}
+                            disabled={busy}
+                          />
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" onClick={() => setExportCompanyId(c.id)} className="hover:bg-slate-200 dark:bg-white/10">
