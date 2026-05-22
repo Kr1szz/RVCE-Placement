@@ -118,6 +118,43 @@ export function AdminPanel() {
   // Export
   const [exportCompanyId, setExportCompanyId] = useState<number | null>(null)
   const [exportFields, setExportFields] = useState<Set<string>>(() => new Set(EXPORT_FIELDS.map((f) => f.key)))
+  const [companyExportFormQuestions, setCompanyExportFormQuestions] = useState<FormQuestion[]>([])
+  const [loadingExportQuestions, setLoadingExportQuestions] = useState(false)
+
+  useEffect(() => {
+    if (exportCompanyId == null) {
+      setCompanyExportFormQuestions([])
+      return
+    }
+
+    // Initialize base export fields
+    setExportFields(new Set(EXPORT_FIELDS.map(f => f.key)))
+
+    const companyForm = data?.forms.find(f => f.companyId === exportCompanyId)
+    if (!companyForm) {
+      setCompanyExportFormQuestions([])
+      return
+    }
+
+    setLoadingExportQuestions(true)
+    repo.getForm(companyForm.id)
+      .then(detail => {
+        setCompanyExportFormQuestions(detail.questions)
+        // Add all form questions to the export fields set by default
+        setExportFields(prev => {
+          const next = new Set(prev)
+          detail.questions.forEach(q => next.add(`question_${q.id}`))
+          return next
+        })
+      })
+      .catch(err => {
+        console.error('Failed to load export form questions:', err)
+        toast.error('Failed to load form questions.')
+      })
+      .finally(() => {
+        setLoadingExportQuestions(false)
+      })
+  }, [exportCompanyId, data?.forms])
 
   // Responses Modal
   const [responsesModal, setResponsesModal] = useState<{
@@ -359,9 +396,12 @@ export function AdminPanel() {
     if (exportCompanyId == null) return
     const id = exportCompanyId
     const fields = [...exportFields]
+    const company = data?.companies.find((c) => c.id === id)
+    const companyName = company ? company.name.replace(/[^a-zA-Z0-9]/g, '_') : `company-${id}`
+
     void run(async () => {
       const bytes = await repo.exportCompany(id, fields)
-      downloadBlob(new Blob([bytesToArrayBuffer(bytes)]), `company-${id}.xlsx`)
+      downloadBlob(new Blob([bytesToArrayBuffer(bytes)]), `${companyName}.xlsx`)
     })
     setExportCompanyId(null)
   }
@@ -948,6 +988,35 @@ export function AdminPanel() {
                 </div>
               ))}
             </div>
+
+            {loadingExportQuestions ? (
+              <div className="py-4 text-center text-sm text-muted-foreground animate-pulse border-t border-slate-200 dark:border-white/10 my-2 pt-3">
+                Loading form questions...
+              </div>
+            ) : companyExportFormQuestions.length > 0 ? (
+              <div className="border-t border-slate-200 dark:border-white/10 my-2 pt-3">
+                <h4 className="text-sm font-semibold text-text-main mb-2">Company Form Responses</h4>
+                <div className="grid grid-cols-1 gap-3 py-1 max-h-48 overflow-y-auto pr-1">
+                  {companyExportFormQuestions.map(q => (
+                    <div key={q.id} className="flex items-start space-x-2">
+                      <Checkbox 
+                        id={`question-${q.id}`} 
+                        className="border-slate-200 dark:border-white/20 mt-1"
+                        checked={exportFields.has(`question_${q.id}`)}
+                        onCheckedChange={v => setExportFields(prev => {
+                          const n = new Set(prev);
+                          if(v) n.add(`question_${q.id}`); else n.delete(`question_${q.id}`);
+                          return n;
+                        })}
+                      />
+                      <Label htmlFor={`question-${q.id}`} className="text-sm cursor-pointer text-text-main leading-snug">
+                        {q.questionText} <span className="text-[10px] text-muted-foreground">({q.fieldType})</span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <DialogFooter>
               <Button variant="ghost" onClick={() => setExportCompanyId(null)} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:bg-white/5">Cancel</Button>
               <Button onClick={doExportCompany} className="gap-2 bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20">

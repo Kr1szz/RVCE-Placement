@@ -3,7 +3,7 @@ import ExcelJS from 'exceljs';
 import { query } from '../config/db.js';
 import { decodeQuestionText } from '../utils/questionParser.js';
 
-export const generateCompanyWorkbook = async (companyId, fields = []) => {
+export const generateCompanyWorkbook = async (companyId, fields = null) => {
   const { rows: companyRows } = await query(
     'SELECT * FROM "companies" WHERE "id" = $1 LIMIT 1',
     [companyId],
@@ -80,14 +80,22 @@ export const generateCompanyWorkbook = async (companyId, fields = []) => {
     { key: 'first_sem_sgpa', header: '1st Sem SGPA', width: 15 },
   ];
 
+  const columnsToInclude = fields
+    ? optionalColumns.filter(col => fields.includes(col.key))
+    : optionalColumns;
+
+  const questionsToInclude = fields
+    ? questionRows.filter(q => fields.includes(`question_${q.id}`))
+    : questionRows;
+
   worksheet.columns = [
     { header: 'Name', key: 'name', width: 28 },
     { header: 'College Email', key: 'college_email_id', width: 32 },
     { header: 'UG CGPA', key: 'ug_cgpa', width: 12 },
     { header: 'Tracker Applied', key: 'tracker', width: 15 },
     { header: 'Resume URL', key: 'resume_url', width: 50 },
-    ...optionalColumns.filter(col => fields.includes(col.key)),
-    ...questionRows.map((question) => ({
+    ...columnsToInclude,
+    ...questionsToInclude.map((question) => ({
       header: decodeQuestionText(question.question_text, question.field_type).label,
       key: `question_${question.id}`,
       width: 28,

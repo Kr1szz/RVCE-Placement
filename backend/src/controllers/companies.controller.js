@@ -93,7 +93,7 @@ export const getMyApplications = async (req, res, next) => {
 export const exportCompany = async (req, res, next) => {
   try {
     const companyId = Number(req.params.id);
-    const fields = req.query.fields ? req.query.fields.split(',') : [];
+    const fields = req.query.fields ? req.query.fields.split(',') : null;
     const workbook = await generateCompanyWorkbook(companyId, fields);
 
     const company = await findCompanyById(companyId);
