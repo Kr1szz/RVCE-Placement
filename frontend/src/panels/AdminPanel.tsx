@@ -6,7 +6,7 @@ import type {
   PlacementFormSummary,
   StudentSummary,
 } from '@/types'
-import { useAuth } from '../context/AuthContext'
+import { repo } from '../store/useAuthStore'
 import { toast } from 'sonner'
 import { downloadBlob, formatDate } from '../lib/format'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -84,7 +84,6 @@ type AdminData = {
 }
 
 export function AdminPanel() {
-  const { repo } = useAuth()
   const [data, setData] = useState<AdminData | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -119,6 +118,43 @@ export function AdminPanel() {
   // Export
   const [exportCompanyId, setExportCompanyId] = useState<number | null>(null)
   const [exportFields, setExportFields] = useState<Set<string>>(() => new Set(EXPORT_FIELDS.map((f) => f.key)))
+  const [companyExportFormQuestions, setCompanyExportFormQuestions] = useState<FormQuestion[]>([])
+  const [loadingExportQuestions, setLoadingExportQuestions] = useState(false)
+
+  useEffect(() => {
+    if (exportCompanyId == null) {
+      setCompanyExportFormQuestions([])
+      return
+    }
+
+    // Initialize base export fields
+    setExportFields(new Set(EXPORT_FIELDS.map(f => f.key)))
+
+    const companyForm = data?.forms.find(f => f.companyId === exportCompanyId)
+    if (!companyForm) {
+      setCompanyExportFormQuestions([])
+      return
+    }
+
+    setLoadingExportQuestions(true)
+    repo.getForm(companyForm.id)
+      .then(detail => {
+        setCompanyExportFormQuestions(detail.questions)
+        // Add all form questions to the export fields set by default
+        setExportFields(prev => {
+          const next = new Set(prev)
+          detail.questions.forEach(q => next.add(`question_${q.id}`))
+          return next
+        })
+      })
+      .catch(err => {
+        console.error('Failed to load export form questions:', err)
+        toast.error('Failed to load form questions.')
+      })
+      .finally(() => {
+        setLoadingExportQuestions(false)
+      })
+  }, [exportCompanyId, data?.forms])
 
   // Responses Modal
   const [responsesModal, setResponsesModal] = useState<{
@@ -160,7 +196,7 @@ export function AdminPanel() {
     } finally {
       setLoading(false)
     }
-  }, [repo])
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -356,13 +392,26 @@ export function AdminPanel() {
       await repo.updateCompanyStatus(companyId, newStatus)
     }, 'Company status updated.')
 
+  const toggleCompanyBlock = (companyId: number, type: 'consent' | 'tracker', currentVal: boolean) =>
+    run(async () => {
+      if (!data) return
+      const company = data.companies.find((c) => c.id === companyId)
+      if (!company) return
+      const consentBlocked = type === 'consent' ? !currentVal : (company.consentBlocked ?? false)
+      const trackerBlocked = type === 'tracker' ? !currentVal : (company.trackerBlocked ?? false)
+      await repo.updateCompanyBlocks(companyId, consentBlocked, trackerBlocked)
+    }, `Company ${type === 'consent' ? 'consent' : 'tracker'} block updated.`)
+
   const doExportCompany = () => {
     if (exportCompanyId == null) return
     const id = exportCompanyId
     const fields = [...exportFields]
+    const company = data?.companies.find((c) => c.id === id)
+    const companyName = company ? company.name.replace(/[^a-zA-Z0-9]/g, '_') : `company-${id}`
+
     void run(async () => {
       const bytes = await repo.exportCompany(id, fields)
-      downloadBlob(new Blob([bytesToArrayBuffer(bytes)]), `company-${id}.xlsx`)
+      downloadBlob(new Blob([bytesToArrayBuffer(bytes)]), `${companyName}.xlsx`)
     })
     setExportCompanyId(null)
   }
@@ -592,6 +641,8 @@ export function AdminPanel() {
                       <TableHead className="text-text-main font-bold">Stipend</TableHead>
                       <TableHead className="text-text-main font-bold">Min CGPA</TableHead>
                       <TableHead className="text-text-main font-bold">Status</TableHead>
+                      <TableHead className="text-text-main font-bold">Block Consent</TableHead>
+                      <TableHead className="text-text-main font-bold">Block Tracker</TableHead>
                       <TableHead className="text-right text-text-main font-bold">Export</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -606,6 +657,20 @@ export function AdminPanel() {
                           <Badge variant={c.status === 'completed' ? 'outline' : 'default'} className={cn("cursor-pointer", c.status === 'completed' ? "text-amber-400 border-amber-400/20 bg-amber-400/10" : "bg-green-500/20 text-green-400 hover:bg-green-500/30")} onClick={() => void toggleCompanyStatus(c.id, c.status)}>
                             {c.status === 'completed' ? 'Completed' : 'Ongoing'}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={c.consentBlocked ?? false}
+                            onCheckedChange={() => void toggleCompanyBlock(c.id, 'consent', c.consentBlocked ?? false)}
+                            disabled={busy}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={c.trackerBlocked ?? false}
+                            onCheckedChange={() => void toggleCompanyBlock(c.id, 'tracker', c.trackerBlocked ?? false)}
+                            disabled={busy}
+                          />
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" onClick={() => setExportCompanyId(c.id)} className="hover:bg-slate-200 dark:bg-white/10">
@@ -949,6 +1014,35 @@ export function AdminPanel() {
                 </div>
               ))}
             </div>
+
+            {loadingExportQuestions ? (
+              <div className="py-4 text-center text-sm text-muted-foreground animate-pulse border-t border-slate-200 dark:border-white/10 my-2 pt-3">
+                Loading form questions...
+              </div>
+            ) : companyExportFormQuestions.length > 0 ? (
+              <div className="border-t border-slate-200 dark:border-white/10 my-2 pt-3">
+                <h4 className="text-sm font-semibold text-text-main mb-2">Company Form Responses</h4>
+                <div className="grid grid-cols-1 gap-3 py-1 max-h-48 overflow-y-auto pr-1">
+                  {companyExportFormQuestions.map(q => (
+                    <div key={q.id} className="flex items-start space-x-2">
+                      <Checkbox 
+                        id={`question-${q.id}`} 
+                        className="border-slate-200 dark:border-white/20 mt-1"
+                        checked={exportFields.has(`question_${q.id}`)}
+                        onCheckedChange={v => setExportFields(prev => {
+                          const n = new Set(prev);
+                          if(v) n.add(`question_${q.id}`); else n.delete(`question_${q.id}`);
+                          return n;
+                        })}
+                      />
+                      <Label htmlFor={`question-${q.id}`} className="text-sm cursor-pointer text-text-main leading-snug">
+                        {q.questionText} <span className="text-[10px] text-muted-foreground">({q.fieldType})</span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <DialogFooter>
               <Button variant="ghost" onClick={() => setExportCompanyId(null)} className="text-slate-900 dark:text-white hover:bg-slate-100 dark:bg-white/5">Cancel</Button>
               <Button onClick={doExportCompany} className="gap-2 bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20">

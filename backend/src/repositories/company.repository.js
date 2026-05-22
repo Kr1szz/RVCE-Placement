@@ -14,6 +14,8 @@ const normalizeCompany = (row) => ({
   deadline: row.deadline,
   consent: row.application_consent,
   tracker: row.application_tracker,
+  consentBlocked: row.consent_blocked ?? false,
+  trackerBlocked: row.tracker_blocked ?? false,
 });
 
 export const createCompany = async (payload) => {
@@ -129,6 +131,18 @@ export const updateCompanyStatus = async (companyId, status) => {
       WHERE "id" = $1
       RETURNING *`,
     [companyId, status]
+  );
+  return rows[0] ? normalizeCompany(rows[0]) : null;
+};
+
+export const updateCompanyBlocks = async (companyId, consentBlocked, trackerBlocked) => {
+  const { rows } = await query(
+    `UPDATE "companies"
+      SET "consent_blocked" = $2,
+          "tracker_blocked" = $3
+      WHERE "id" = $1
+      RETURNING *`,
+    [companyId, consentBlocked, trackerBlocked]
   );
   return rows[0] ? normalizeCompany(rows[0]) : null;
 };

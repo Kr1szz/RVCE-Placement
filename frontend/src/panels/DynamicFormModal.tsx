@@ -32,7 +32,8 @@ export function DynamicFormModal({
   onClose: () => void
   onSubmitted: () => void
 }) {
-  const { submitResponse, uploadFile } = useFormStore()
+  const submitResponse = useFormStore((state) => state.submitResponse)
+  const uploadFile = useFormStore((state) => state.uploadFile)
   const [saving, setSaving] = useState(false)
 
   const initial = useMemo(() => {

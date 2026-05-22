@@ -88,8 +88,8 @@ export const createMessageHandler = async (req, res, next) => {
       await sendToUsers({
         userIds: targetUserIds,
         excludeUserIds: [senderUserId],
-        title: sender?.name ? `New message from ${sender.name}` : 'New chat message',
-        body: text.substring(0, 100) || 'Sent an attachment',
+        title: sender?.name || 'New Message',
+        body: text ? (text.length > 50 ? text.substring(0, 47) + '...' : text) : '📎 Attachment',
         data: {
           type: 'chat_message',
           messageId: String(message.id),

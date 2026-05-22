@@ -2,7 +2,8 @@ import { GoogleLogin } from '@react-oauth/google'
 import { Bell } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { useAuth } from '../context/AuthContext'
+import { useAuthStore } from '../store/useAuthStore'
+import { useShallow } from 'zustand/react/shallow'
 import { AuthCardSkeleton } from '@/components/modern/Skeleton'
 import { CollegeLogo } from '@/components/modern/CollegeLogo'
 import { Button } from '@/components/ui/button'
@@ -12,7 +13,14 @@ import {
 } from '../notifications/registerNotifications'
 
 export default function HomeScreen() {
-  const { loginWithGoogle, errorMessage, clearError, status } = useAuth()
+  const { loginWithGoogle, errorMessage, clearError, status } = useAuthStore(
+    useShallow((state) => ({
+      loginWithGoogle: state.loginWithGoogle,
+      errorMessage: state.errorMessage,
+      clearError: state.clearError,
+      status: state.status,
+    }))
+  )
   const isBusy = status === 'loading'
   const [notificationPreference, setNotificationPreference] = useState(() =>
     getNotificationPreference(),

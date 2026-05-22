@@ -220,6 +220,11 @@ function getNavigationUrl(data: Record<string, string> = {}) {
     return `/?${params.toString()}`
   }
 
+  if (type.startsWith('profile_')) {
+    params.set('panel', 'profile')
+    return `/?${params.toString()}`
+  }
+
   return '/'
 }
 
@@ -288,7 +293,11 @@ self.addEventListener('notificationclick', (event) => {
 
       for (const client of allClients) {
         if ('focus' in client) {
-          await client.navigate(url)
+          client.postMessage({
+            type: 'NAVIGATE',
+            url,
+            data: event.notification.data,
+          })
           await client.focus()
           return
         }

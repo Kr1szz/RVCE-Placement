@@ -1,19 +1,17 @@
-/* eslint-disable react-hooks/static-components */
 import { useEffect, useMemo, useState } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuthStore, repo } from '../store/useAuthStore'
+import { useShallow } from 'zustand/react/shallow'
 import { AdminPanel } from '../panels/AdminPanel'
 import { ChatPanel } from '../panels/ChatPanel'
 import { CompaniesPanel } from '../panels/CompaniesPanel'
 import { FormsPanel } from '../panels/FormsPanel'
 import { ProfilePanel } from '../panels/ProfilePanel'
-import { Button } from '@/components/ui/button'
 import { 
   User, 
   Building2, 
   FileText, 
   MessageSquare, 
   Settings, 
-  LogOut,
 } from 'lucide-react'
 import { CollegeLogo } from '@/components/modern/CollegeLogo'
 import { cn } from '@/lib/utils'
@@ -34,8 +32,20 @@ function getRequestedPanelId() {
 }
 
 export default function DashboardScreen() {
-  const { session, logout, repo } = useAuth()
+  const { session } = useAuthStore(
+    useShallow((state) => ({
+      session: state.session,
+    }))
+  )
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [showHeader, setShowHeader] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowHeader(false)
+    }, 10000)
+    return () => clearTimeout(timer)
+  }, [])
 
   const panels: Panel[] = useMemo(
     () => {
@@ -106,10 +116,27 @@ export default function DashboardScreen() {
   }, [panels])
 
   useEffect(() => {
+    const handleNavigate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ panel: string }>
+      const targetPanel = customEvent.detail?.panel
+      if (targetPanel) {
+        const index = panels.findIndex((p) => p.id === targetPanel)
+        if (index >= 0) {
+          setSelectedIndex(index)
+        }
+      }
+    }
+    window.addEventListener('navigate-to-panel', handleNavigate)
+    return () => {
+      window.removeEventListener('navigate-to-panel', handleNavigate)
+    }
+  }, [panels])
+
+  useEffect(() => {
     if (session) {
       void registerNotificationsSafely(repo)
     }
-  }, [session, repo])
+  }, [session])
 
   if (!session) return null
 
@@ -118,7 +145,10 @@ export default function DashboardScreen() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-white">
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/85 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/70 sm:px-6 lg:px-8">
+      <header className={cn(
+        "sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/85 px-4 py-3 backdrop-blur-xl transition-all duration-500 ease-in-out dark:border-white/10 dark:bg-slate-950/70 sm:px-6 lg:px-8 overflow-hidden",
+        showHeader ? "max-h-24 opacity-100" : "max-h-0 opacity-0 py-0 border-b-0 pointer-events-none"
+      )}>
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-white px-1.5 py-1 shadow-sm">
             <CollegeLogo imageClassName="w-10 h-10 object-cover rounded-md" />
@@ -132,23 +162,13 @@ export default function DashboardScreen() {
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={logout}
-            className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-slate-200 dark:bg-white/10 sm:w-auto sm:px-4"
-            title="Logout"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
-          </Button>
-        </div>
       </header>
 
       <main className={cn(
-        "mx-auto min-h-[calc(100vh-4rem)] w-full px-3 py-4 pb-28 sm:px-5 lg:px-8",
-        active.id === 'chat' ? "max-w-full p-0 pb-20" : "max-w-7xl"
+        "mx-auto min-h-[calc(100vh-4rem)] w-full transition-all duration-500 ease-in-out",
+        active.id === 'chat'
+          ? cn("max-w-full pb-20 px-0", showHeader ? "pt-0" : "pt-6 sm:pt-8")
+          : cn("max-w-7xl px-3 sm:px-5 lg:px-8 pb-28", showHeader ? "pt-6 sm:pt-8" : "pt-12 sm:pt-16")
       )}>
         {active.element}
       </main>

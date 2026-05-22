@@ -147,8 +147,8 @@ export const rejectStudent = async (req, res, next) => {
 
     await sendToUsers({
       userIds: [studentId],
-      title: 'Profile Verification Rejected',
-      body: `Your profile verification was rejected. Reason: ${reason}. Please review and update your details.`,
+      title: 'Verification Rejected',
+      body: `Reason: ${reason}. Please update your profile ⚠️`,
       data: {
         type: 'profile_verification_rejected',
       },
@@ -183,7 +183,7 @@ export const verifyStudent = async (req, res, next) => {
     await sendToUsers({
       userIds: [studentId],
       title: 'Profile Verified',
-      body: 'Your placement profile has been verified and locked for edits.',
+      body: 'Your profile is verified and locked ',
       data: {
         type: 'profile_verification',
       },
@@ -223,8 +223,8 @@ export const approveUnlock = async (req, res, next) => {
 
     await sendToUsers({
       userIds: [studentId],
-      title: 'Profile Edit Request Approved',
-      body: 'Your profile edit request has been approved. You can now edit your profile.',
+      title: 'Profile Unlocked',
+      body: 'You can now edit your profile details ',
       data: {
         type: 'profile_unlock_approved',
       },

@@ -6,7 +6,8 @@ import {
   findCompanyById,
   listCompanies,
   listEligibleStudentsForCompany,
-  updateCompanyStatus
+  updateCompanyStatus,
+  updateCompanyBlocks
 } from '../repositories/company.repository.js';
 import { generateCompanyWorkbook } from '../services/export.service.js';
 import { ApiError } from '../utils/apiError.js';
@@ -59,8 +60,8 @@ export const createCompanyRecord = async (req, res, next) => {
     const recipientIds = await listStudentIds();
     await sendToUsers({
       userIds: recipientIds,
-      title: 'New Company Added',
-      body: `${company.name} is now hiring. Check the portal for details!`,
+      title: 'New Company',
+      body: `${company.name} is now hiring! `,
       data: {
         type: 'new_company',
         companyId: String(company.id),
@@ -93,7 +94,7 @@ export const getMyApplications = async (req, res, next) => {
 export const exportCompany = async (req, res, next) => {
   try {
     const companyId = Number(req.params.id);
-    const fields = req.query.fields ? req.query.fields.split(',') : [];
+    const fields = req.query.fields ? req.query.fields.split(',') : null;
     const workbook = await generateCompanyWorkbook(companyId, fields);
 
     const company = await findCompanyById(companyId);
@@ -119,7 +120,7 @@ export const updateStatus = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const { status } = req.body;
-    
+
     if (status !== 'ongoing' && status !== 'completed') {
       throw new ApiError(400, 'Invalid status.');
     }
@@ -130,6 +131,27 @@ export const updateStatus = async (req, res, next) => {
     }
 
     const updated = await updateCompanyStatus(id, status);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateBlocks = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const { consentBlocked, trackerBlocked } = req.body;
+
+    if (typeof consentBlocked !== 'boolean' || typeof trackerBlocked !== 'boolean') {
+      throw new ApiError(400, 'Invalid block values.');
+    }
+
+    const company = await findCompanyById(id);
+    if (!company) {
+      throw new ApiError(404, 'Company not found.');
+    }
+
+    const updated = await updateCompanyBlocks(id, consentBlocked, trackerBlocked);
     res.json(updated);
   } catch (error) {
     next(error);

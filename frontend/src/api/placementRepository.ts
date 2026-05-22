@@ -228,6 +228,18 @@ export class PlacementRepository {
     return parseCompany(json as Record<string, unknown>)
   }
 
+  async updateCompanyBlocks(
+    companyId: number,
+    consentBlocked: boolean,
+    trackerBlocked: boolean,
+  ): Promise<Company> {
+    const json = await this.client.putJson(`/companies/${companyId}/blocks`, {
+      consentBlocked,
+      trackerBlocked,
+    })
+    return parseCompany(json as Record<string, unknown>)
+  }
+
   async getStudents(): Promise<StudentSummary[]> {
     const list = await this.client.getList('/users/students')
     return list.map((item) => parseStudent(item as Record<string, unknown>))

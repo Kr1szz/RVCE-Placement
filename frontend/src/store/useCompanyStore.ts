@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore } from './useAuthStore'
+import { repo } from './useAuthStore'
 import type { Company } from '@/types'
 
 interface CompanyState {
@@ -28,7 +28,6 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
     set({ error: null })
     
     try {
-      const repo = useAuthStore.getState().repo
       const companies = await repo.getCompanies()
       set({ companies, loading: false })
     } catch (e) {
@@ -44,7 +43,6 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
     set({ busyIds: new Set(busyIds).add(company.id) })
     
     try {
-      const repo = useAuthStore.getState().repo
       await repo.saveApplication(company.id, patch)
 
       // Update local state immediately for a snappy UI

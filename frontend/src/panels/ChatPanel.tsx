@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChatMessage, ChatUser } from '@/types'
-import { useAuth } from '../context/AuthContext'
+import { useAuthStore, repo } from '../store/useAuthStore'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,7 +12,7 @@ import { Send, Clock, AlertCircle, Paperclip, X, File, Image as ImageIcon, Trash
 import { cn } from '@/lib/utils'
 
 export function ChatPanel() {
-  const { repo, session } = useAuth()
+  const session = useAuthStore((state) => state.session)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -21,6 +21,7 @@ export function ChatPanel() {
   const [attachment, setAttachment] = useState<File | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const isLoadingRef = useRef(false)
 
   const [users, setUsers] = useState<ChatUser[]>([])
   const [mentionSearch, setMentionSearch] = useState<string | null>(null)
@@ -32,6 +33,8 @@ export function ChatPanel() {
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0)
 
   const load = useCallback(async (background = false) => {
+    if (isLoadingRef.current) return
+    isLoadingRef.current = true
     if (!background) {
       setLoading(true)
       setErr(null)
@@ -44,11 +47,12 @@ export function ChatPanel() {
         setErr(e instanceof Error ? e.message : String(e))
       }
     } finally {
+      isLoadingRef.current = false
       if (!background) {
         setLoading(false)
       }
     }
-  }, [repo])
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -107,14 +111,14 @@ export function ChatPanel() {
       if (document.visibilityState === 'visible') {
         void load(true) // Background refresh (no loader skeletons!)
       }
-    }, 5000)
+    }, 500)
 
     return () => clearInterval(timer)
   }, [load])
 
   useEffect(() => {
     void repo.getAllUsersForMention().then(setUsers).catch(console.error)
-  }, [repo])
+  }, [])
 
   useEffect(() => {
     if (scrollRef.current) {
