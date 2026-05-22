@@ -21,6 +21,7 @@ export function ChatPanel() {
   const [attachment, setAttachment] = useState<File | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const isLoadingRef = useRef(false)
 
   const [users, setUsers] = useState<ChatUser[]>([])
   const [mentionSearch, setMentionSearch] = useState<string | null>(null)
@@ -32,6 +33,8 @@ export function ChatPanel() {
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0)
 
   const load = useCallback(async (background = false) => {
+    if (isLoadingRef.current) return
+    isLoadingRef.current = true
     if (!background) {
       setLoading(true)
       setErr(null)
@@ -44,6 +47,7 @@ export function ChatPanel() {
         setErr(e instanceof Error ? e.message : String(e))
       }
     } finally {
+      isLoadingRef.current = false
       if (!background) {
         setLoading(false)
       }
@@ -107,7 +111,7 @@ export function ChatPanel() {
       if (document.visibilityState === 'visible') {
         void load(true) // Background refresh (no loader skeletons!)
       }
-    }, 5000)
+    }, 500)
 
     return () => clearInterval(timer)
   }, [load])
