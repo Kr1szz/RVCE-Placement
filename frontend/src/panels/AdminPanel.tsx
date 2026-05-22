@@ -435,7 +435,7 @@ export function AdminPanel() {
     }
     if (!isOpen) return;
 
-    let assignedCount = 0;
+    let assignedCount: number;
     if (!f.companyId) {
       assignedCount = data.students.length;
     } else {

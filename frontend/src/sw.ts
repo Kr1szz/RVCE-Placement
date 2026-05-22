@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
 
 import { clientsClaim } from 'workbox-core'
-import { precacheAndRoute } from 'workbox-precaching'
+import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching'
+import { NavigationRoute, registerRoute } from 'workbox-routing'
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{
@@ -22,6 +23,17 @@ clientsClaim()
 self.skipWaiting()
 
 precacheAndRoute(self.__WB_MANIFEST)
+
+// Register a navigation route to serve index.html for all offline navigation requests (SPAs)
+// Except for API requests which should bypass the service worker's shell caching
+registerRoute(
+  new NavigationRoute(
+    createHandlerBoundToURL('index.html'),
+    {
+      denylist: [/^\/api/],
+    }
+  )
+)
 
 import { getConfig, getQueuedRequests, deleteQueuedRequest, getCachedIds, saveCachedIds } from './lib/offlineDb'
 

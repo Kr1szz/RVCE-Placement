@@ -233,7 +233,7 @@ export function ChatPanel() {
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
-            a: ({ node, href, children, ...props }) => {
+            a: ({ href, children, ...props }) => {
               if (href?.startsWith('mention:')) {
                 return (
                   <span className={cn("font-bold", isMe ? "text-indigo-600 dark:text-indigo-300 font-extrabold" : "text-primary font-bold")}>
