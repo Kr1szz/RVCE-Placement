@@ -84,14 +84,74 @@ function registerForegroundMessageListener() {
     const payload = event.data as
       | {
           type?: string
-          notification?: { title?: string; body?: string }
+          url?: string
+          notification?: {
+            title?: string
+            body?: string
+            data?: {
+              type?: string
+              companyId?: string
+              formId?: string
+              messageId?: string
+            }
+          }
+          data?: Record<string, string>
         }
       | undefined
 
-    if (payload?.type !== 'PUSH_NOTIFICATION') return
+    if (!payload) return
+
+    if (payload.type === 'NAVIGATE') {
+      const pushType = payload.data?.type
+      let targetPanel = ''
+      if (pushType === 'new_company') {
+        targetPanel = 'companies'
+      } else if (pushType === 'form_assignment' || pushType === 'new_form') {
+        targetPanel = 'forms'
+      } else if (pushType === 'message_mention' || pushType === 'announcement' || pushType === 'chat_message') {
+        targetPanel = 'chat'
+      } else if (pushType && pushType.startsWith('profile_')) {
+        targetPanel = 'profile'
+      }
+
+      if (targetPanel) {
+        window.dispatchEvent(
+          new CustomEvent('navigate-to-panel', {
+            detail: { panel: targetPanel },
+          })
+        )
+      }
+      return
+    }
+
+    if (payload.type !== 'PUSH_NOTIFICATION') return
+
+    const pushType = payload.notification?.data?.type
+    let targetPanel = ''
+    if (pushType === 'new_company') {
+      targetPanel = 'companies'
+    } else if (pushType === 'form_assignment' || pushType === 'new_form') {
+      targetPanel = 'forms'
+    } else if (pushType === 'message_mention' || pushType === 'announcement' || pushType === 'chat_message') {
+      targetPanel = 'chat'
+    } else if (pushType && pushType.startsWith('profile_')) {
+      targetPanel = 'profile'
+    }
 
     toast(payload.notification?.title ?? 'New notification', {
       description: payload.notification?.body ?? '',
+      action: targetPanel
+        ? {
+            label: 'View',
+            onClick: () => {
+              window.dispatchEvent(
+                new CustomEvent('navigate-to-panel', {
+                  detail: { panel: targetPanel },
+                })
+              )
+            },
+          }
+        : undefined,
     })
   })
 

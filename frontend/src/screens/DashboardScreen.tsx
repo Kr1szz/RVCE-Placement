@@ -116,6 +116,23 @@ export default function DashboardScreen() {
   }, [panels])
 
   useEffect(() => {
+    const handleNavigate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ panel: string }>
+      const targetPanel = customEvent.detail?.panel
+      if (targetPanel) {
+        const index = panels.findIndex((p) => p.id === targetPanel)
+        if (index >= 0) {
+          setSelectedIndex(index)
+        }
+      }
+    }
+    window.addEventListener('navigate-to-panel', handleNavigate)
+    return () => {
+      window.removeEventListener('navigate-to-panel', handleNavigate)
+    }
+  }, [panels])
+
+  useEffect(() => {
     if (session) {
       void registerNotificationsSafely(repo)
     }

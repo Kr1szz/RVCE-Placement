@@ -60,8 +60,8 @@ export const createCompanyRecord = async (req, res, next) => {
     const recipientIds = await listStudentIds();
     await sendToUsers({
       userIds: recipientIds,
-      title: 'New Company Added',
-      body: `${company.name} is now hiring. Check the portal for details!`,
+      title: 'New Company',
+      body: `${company.name} is now hiring! `,
       data: {
         type: 'new_company',
         companyId: String(company.id),
@@ -120,7 +120,7 @@ export const updateStatus = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const { status } = req.body;
-    
+
     if (status !== 'ongoing' && status !== 'completed') {
       throw new ApiError(400, 'Invalid status.');
     }

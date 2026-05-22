@@ -65,10 +65,8 @@ export const createFormRecord = async (req, res, next) => {
 
     await sendToUsers({
       userIds: recipientIds,
-      title: 'New Form Created',
-      body: sender?.name
-        ? `${sender.name} created a new ${form.type} form: "${form.title}".`
-        : `A new ${form.type} form "${form.title}" was created.`,
+      title: 'New Form',
+      body: `${form.title} (${form.type}) is available `,
       data: {
         type: 'new_form',
         formId: String(form.id),
@@ -181,10 +179,8 @@ export const sendFormToStudents = async (req, res, next) => {
 
     const result = await sendToUsers({
       userIds: recipientIds,
-      title: `${form.title} is now live`,
-      body: sender?.name
-        ? `${sender.name} shared a new ${form.type} form for you to complete.`
-        : `A new ${form.type} form is ready for you to complete.`,
+      title: 'Form Live',
+      body: `Please complete "${form.title}" `,
       data: {
         type: 'form_assignment',
         formId,
