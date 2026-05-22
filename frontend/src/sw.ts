@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
 
 import { clientsClaim } from 'workbox-core'
-import { precacheAndRoute } from 'workbox-precaching'
+import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching'
+import { NavigationRoute, registerRoute } from 'workbox-routing'
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{
@@ -22,6 +23,176 @@ clientsClaim()
 self.skipWaiting()
 
 precacheAndRoute(self.__WB_MANIFEST)
+
+// Register a navigation route to serve index.html for all offline navigation requests (SPAs)
+// Except for API requests which should bypass the service worker's shell caching
+registerRoute(
+  new NavigationRoute(
+    createHandlerBoundToURL('index.html'),
+    {
+      denylist: [/^\/api/],
+    }
+  )
+)
+
+import { getConfig, getQueuedRequests, deleteQueuedRequest, getCachedIds, saveCachedIds } from './lib/offlineDb'
+
+// REPLAY OF QUEUED REQUESTS
+async function notifyClientsOfSync(url: string, method: string) {
+  const clientsList = await self.clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true,
+  })
+  for (const client of clientsList) {
+    client.postMessage({
+      type: 'OFFLINE_SYNC_COMPLETE',
+      url,
+      method,
+    })
+  }
+}
+
+async function replayQueuedRequests(): Promise<void> {
+  const config = await getConfig()
+  if (!config.apiBaseUrl) {
+    console.warn('API base URL not found in config, aborting sync replay.')
+    return
+  }
+
+  const queued = await getQueuedRequests()
+  if (queued.length === 0) return
+
+  for (const req of queued) {
+    try {
+      const url = `${config.apiBaseUrl}${req.url}`
+      const headers = { ...req.headers }
+      if (config.token) {
+        headers['Authorization'] = `Bearer ${config.token}`
+      }
+
+      let body: any
+      if (req.isFormData) {
+        const formData = new FormData()
+        for (const entry of req.body) {
+          if (entry.isFile) {
+            const file = new File([entry.value], entry.fileName, { type: entry.fileType })
+            formData.append(entry.key, file)
+          } else {
+            formData.append(entry.key, entry.value)
+          }
+        }
+        body = formData
+      } else if (req.body) {
+        body = JSON.stringify(req.body)
+      }
+
+      const res = await fetch(url, {
+        method: req.method,
+        headers,
+        body,
+      })
+
+      if (res.ok) {
+        await deleteQueuedRequest(req.id!)
+        await notifyClientsOfSync(req.url, req.method)
+      } else if (res.status >= 400 && res.status < 500) {
+        await deleteQueuedRequest(req.id!)
+      } else {
+        throw new Error(`Request failed with status ${res.status}`)
+      }
+    } catch (err) {
+      console.error('Failed to replay queued request:', req, err)
+      throw err
+    }
+  }
+}
+
+// PERIODIC PORTAL UPDATE
+async function fetchNewCompaniesAndForms(): Promise<void> {
+  const config = await getConfig()
+  if (!config.apiBaseUrl) return
+
+  const headers: Record<string, string> = {}
+  if (config.token) {
+    headers['Authorization'] = `Bearer ${config.token}`
+  }
+
+  // 1. Fetch Companies
+  try {
+    const res = await fetch(`${config.apiBaseUrl}/companies`, { headers })
+    if (res.ok) {
+      const companies = await res.json()
+      if (Array.isArray(companies)) {
+        const previousIds = await getCachedIds('companies')
+        const currentIds = companies.map((c: any) => Number(c.id)).filter(id => !Number.isNaN(id))
+        const newCompanies = companies.filter((c: any) => !previousIds.includes(Number(c.id)) && previousIds.length > 0)
+        await saveCachedIds('companies', currentIds)
+
+        if (newCompanies.length > 0) {
+          const title = newCompanies.length === 1 
+            ? `New Opportunity: ${newCompanies[0].name}` 
+            : `${newCompanies.length} New Placements Available!`
+          const body = newCompanies.length === 1
+            ? `Package: ${newCompanies[0].package} | Cutoff: ${newCompanies[0].minCgpa} CGPA`
+            : `Check the portal for new registered companies.`
+
+          await self.registration.showNotification(title, {
+            body,
+            icon: '/pwa-192x192.png',
+            badge: '/pwa-64x64.png',
+            data: { type: 'new_company' }
+          })
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Periodic sync fetch companies failed:', err)
+  }
+
+  // 2. Fetch Assigned Forms
+  try {
+    const res = await fetch(`${config.apiBaseUrl}/forms/assigned/me`, { headers })
+    if (res.ok) {
+      const forms = await res.json()
+      if (Array.isArray(forms)) {
+        const previousIds = await getCachedIds('forms')
+        const currentIds = forms.map((f: any) => Number(f.id)).filter(id => !Number.isNaN(id))
+        const newForms = forms.filter((f: any) => !previousIds.includes(Number(f.id)) && previousIds.length > 0)
+        await saveCachedIds('forms', currentIds)
+
+        if (newForms.length > 0) {
+          const title = newForms.length === 1 
+            ? `New Form Assigned` 
+            : `${newForms.length} New Forms Assigned`
+          const body = newForms.length === 1
+            ? `Please fill out: "${newForms[0].title}"`
+            : `Check the portal for new assigned forms.`
+
+          await self.registration.showNotification(title, {
+            body,
+            icon: '/pwa-192x192.png',
+            badge: '/pwa-64x64.png',
+            data: { type: 'new_form' }
+          })
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Periodic sync fetch forms failed:', err)
+  }
+}
+
+self.addEventListener('sync', (event: any) => {
+  if (event.tag === 'sync-api-requests') {
+    event.waitUntil(replayQueuedRequests())
+  }
+})
+
+self.addEventListener('periodicsync', (event: any) => {
+  if (event.tag === 'periodic-portal-update') {
+    event.waitUntil(fetchNewCompaniesAndForms())
+  }
+})
 
 function getNavigationUrl(data: Record<string, string> = {}) {
   const type = data.type || ''

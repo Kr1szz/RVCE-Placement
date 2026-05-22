@@ -5,7 +5,7 @@ import type {
   FormResponseRecord,
   PlacementFormSummary,
   StudentSummary,
-} from '../api/types'
+} from '@/types'
 import { useAuth } from '../context/AuthContext'
 import { toast } from 'sonner'
 import { downloadBlob, formatDate } from '../lib/format'
@@ -435,7 +435,7 @@ export function AdminPanel() {
     }
     if (!isOpen) return;
 
-    let assignedCount = 0;
+    let assignedCount: number;
     if (!f.companyId) {
       assignedCount = data.students.length;
     } else {

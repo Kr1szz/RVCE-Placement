@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ChatMessage, ChatUser } from '../api/types'
+import type { ChatMessage, ChatUser } from '@/types'
 import { useAuth } from '../context/AuthContext'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
@@ -84,6 +84,20 @@ export function ChatPanel() {
     navigator.serviceWorker.addEventListener('message', handleSWMessage)
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleSWMessage)
+    }
+  }, [load])
+
+  // Listen for background sync completion to refresh chat messages
+  useEffect(() => {
+    const handleSyncComplete = (event: Event) => {
+      const customEvent = event as CustomEvent<{ url?: string }>
+      if (customEvent.detail?.url?.startsWith('/messages')) {
+        void load(true) // Refresh chat message list silently
+      }
+    }
+    window.addEventListener('offline-sync-complete', handleSyncComplete)
+    return () => {
+      window.removeEventListener('offline-sync-complete', handleSyncComplete)
     }
   }, [load])
 
@@ -219,7 +233,7 @@ export function ChatPanel() {
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
-            a: ({ node, href, children, ...props }) => {
+            a: ({ href, children, ...props }) => {
               if (href?.startsWith('mention:')) {
                 return (
                   <span className={cn("font-bold", isMe ? "text-indigo-600 dark:text-indigo-300 font-extrabold" : "text-primary font-bold")}>

@@ -1,8 +1,76 @@
+import { saveTokenAndUrl, queueRequest } from '../lib/offlineDb'
+
+interface ValidationErrorDetail {
+  path?: string[] | string
+  message?: string
+  code?: string
+  format?: string
+  pattern?: string
+  type?: string
+  minimum?: number | string
+  maximum?: number | string
+}
+
+function isNetworkError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return (
+      !navigator.onLine ||
+      error instanceof TypeError ||
+      error.message.includes('Failed to fetch') ||
+      error.message.includes('NetworkError') ||
+      error.message.includes('network connection')
+    )
+  }
+  return !navigator.onLine
+}
+
+async function registerSyncTag() {
+  if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const regWithSync = reg as unknown as {
+        sync: {
+          register: (tag: string) => Promise<void>
+        }
+      }
+      await regWithSync.sync.register('sync-api-requests')
+    } catch (e) {
+      console.warn('Background sync registration failed:', e)
+    }
+  }
+}
+
+type SerializedFormEntry = 
+  | { key: string; value: File; isFile: true; fileName: string; fileType: string }
+  | { key: string; value: string; isFile: false }
+
+async function serializeFormData(form: FormData) {
+  const entries: SerializedFormEntry[] = []
+  for (const [key, value] of form.entries()) {
+    if (value instanceof File) {
+      entries.push({
+        key,
+        value,
+        isFile: true,
+        fileName: value.name,
+        fileType: value.type
+      })
+    } else {
+      entries.push({
+        key,
+        value: String(value),
+        isFile: false
+      })
+    }
+  }
+  return entries
+}
+
 export class ApiClientError extends Error {
   status: number
-  details: any
+  details: unknown
 
-  constructor(message: string, status: number, details?: any) {
+  constructor(message: string, status: number, details?: unknown) {
     super(message)
     this.name = 'ApiClientError'
     this.status = status
@@ -12,7 +80,7 @@ export class ApiClientError extends Error {
 
 async function readError(res: Response): Promise<Error> {
   try {
-    const data = (await res.json()) as { message?: string; details?: any }
+    const data = (await res.json()) as { message?: string; details?: unknown }
     if (data?.message) {
       let msg = data.message
       if (msg.trim().startsWith('[') && msg.trim().endsWith(']')) {
@@ -51,9 +119,9 @@ async function readError(res: Response): Promise<Error> {
               messageText: 'Message Text',
             }
 
-            const formatted = parsed.map((err: any) => {
+            const formatted = parsed.map((err: ValidationErrorDetail) => {
               const path = Array.isArray(err.path) ? err.path.join('.') : ''
-              const label = fieldLabels[path] || path || 'Field'
+              const label = fieldLabels[path] || (typeof path === 'string' ? path : '') || 'Field'
               let errMessage = err.message || 'Invalid value'
 
               if (err.code === 'invalid_format' && err.format === 'email') {
@@ -102,10 +170,12 @@ export class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+    void saveTokenAndUrl(this.token, this.baseUrl)
   }
 
   setToken(token: string | null) {
     this.token = token
+    void saveTokenAndUrl(token, this.baseUrl)
   }
 
   private authHeaders(): HeadersInit {
@@ -140,39 +210,88 @@ export class ApiClient {
     path: string,
     body: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const res = await fetch(this.getFullUrl(path), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
-      body: JSON.stringify(body),
-    })
-    if (!res.ok) throw await readError(res)
-    return (await res.json()) as Record<string, unknown>
+    try {
+      const res = await fetch(this.getFullUrl(path), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw await readError(res)
+      return (await res.json()) as Record<string, unknown>
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        await queueRequest({
+          url: path,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(this.authHeaders() as Record<string, string>) },
+          body,
+          isFormData: false,
+          createdAt: Date.now()
+        })
+        await registerSyncTag()
+        throw new ApiClientError('You are offline. Your submission has been queued and will be sent automatically when you reconnect.', 0)
+      }
+      throw err
+    }
   }
 
   async putJson(
     path: string,
     body: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const res = await fetch(this.getFullUrl(path), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
-      body: JSON.stringify(body),
-    })
-    if (!res.ok) throw await readError(res)
-    return (await res.json()) as Record<string, unknown>
+    try {
+      const res = await fetch(this.getFullUrl(path), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw await readError(res)
+      return (await res.json()) as Record<string, unknown>
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        await queueRequest({
+          url: path,
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...(this.authHeaders() as Record<string, string>) },
+          body,
+          isFormData: false,
+          createdAt: Date.now()
+        })
+        await registerSyncTag()
+        throw new ApiClientError('You are offline. Your edits have been queued and will sync automatically when you reconnect.', 0)
+      }
+      throw err
+    }
   }
 
   async postFormData(
     path: string,
     form: FormData,
   ): Promise<Record<string, unknown>> {
-    const res = await fetch(this.getFullUrl(path), {
-      method: 'POST',
-      headers: this.authHeaders(),
-      body: form,
-    })
-    if (!res.ok) throw await readError(res)
-    return (await res.json()) as Record<string, unknown>
+    try {
+      const res = await fetch(this.getFullUrl(path), {
+        method: 'POST',
+        headers: this.authHeaders(),
+        body: form,
+      })
+      if (!res.ok) throw await readError(res)
+      return (await res.json()) as Record<string, unknown>
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        const serialized = await serializeFormData(form)
+        await queueRequest({
+          url: path,
+          method: 'POST',
+          headers: this.authHeaders() as Record<string, string>,
+          body: serialized,
+          isFormData: true,
+          createdAt: Date.now()
+        })
+        await registerSyncTag()
+        throw new ApiClientError('You are offline. Your file upload has been queued and will run automatically when you reconnect.', 0)
+      }
+      throw err
+    }
   }
 
   async getBytes(path: string): Promise<Uint8Array> {
@@ -185,10 +304,26 @@ export class ApiClient {
   }
 
   async delete(path: string): Promise<void> {
-    const res = await fetch(this.getFullUrl(path), {
-      method: 'DELETE',
-      headers: this.authHeaders(),
-    })
-    if (!res.ok) throw await readError(res)
+    try {
+      const res = await fetch(this.getFullUrl(path), {
+        method: 'DELETE',
+        headers: this.authHeaders(),
+      })
+      if (!res.ok) throw await readError(res)
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        await queueRequest({
+          url: path,
+          method: 'DELETE',
+          headers: this.authHeaders() as Record<string, string>,
+          body: null,
+          isFormData: false,
+          createdAt: Date.now()
+        })
+        await registerSyncTag()
+        throw new ApiClientError('You are offline. Your deletion request has been queued and will execute automatically when you reconnect.', 0)
+      }
+      throw err
+    }
   }
 }

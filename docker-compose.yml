@@ -1,0 +1,53 @@
+services:
+  database:
+    image: postgres:15-alpine
+    container_name: placement-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: mca_placement
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    container_name: placement-backend
+    restart: always
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgrespassword@database:5432/mca_placement
+      - JWT_SECRET=change-me-in-production-long-secure-string
+      - JWT_EXPIRES_IN=7d
+      # Google API Credentials (placeholders - override as needed)
+      - GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+      - GOOGLE_DRIVE_FOLDER_ID=your-google-drive-folder-id
+      - GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
+      - GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=""
+      # Web Push / VAPID Keys
+      - WEB_PUSH_PUBLIC_KEY=your-vapid-public-key
+      - WEB_PUSH_PRIVATE_KEY=your-vapid-private-key
+      - WEB_PUSH_SUBJECT=mailto:placements@rvce.edu.in
+    depends_on:
+      - database
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_BASE_URL=/api
+    container_name: placement-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

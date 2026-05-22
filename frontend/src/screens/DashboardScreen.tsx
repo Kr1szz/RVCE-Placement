@@ -100,6 +100,7 @@ export default function DashboardScreen() {
     const panelIndex = panels.findIndex((panel) => panel.id === requestedPanelId)
     if (panelIndex < 0) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(panelIndex)
     window.history.replaceState({}, '', window.location.pathname)
   }, [panels])
