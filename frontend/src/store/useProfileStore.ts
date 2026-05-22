@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore } from './useAuthStore'
+import { useAuthStore, repo } from './useAuthStore'
 import type { AppUser } from '@/types'
 
 interface ProfileState {
@@ -32,7 +32,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     set({ error: null })
     
     try {
-      const repo = useAuthStore.getState().repo
       const profile = await repo.getProfile()
       
       // Update official profile
@@ -67,8 +66,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 
     set({ saving: true })
     try {
-      const repo = useAuthStore.getState().repo
-      
       // Convert numeric fields from draft
       const payload: Record<string, unknown> = {
         ...draft,
@@ -90,7 +87,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   uploadResume: async (file) => {
     set({ saving: true })
     try {
-      const repo = useAuthStore.getState().repo
       const updated = await repo.uploadResume(file)
       useAuthStore.getState().setSessionUser(updated)
       set({ profile: updated, draft: { ...updated }, saving: false })
@@ -103,7 +99,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   uploadProfilePicture: async (file) => {
     set({ saving: true })
     try {
-      const repo = useAuthStore.getState().repo
       const updated = await repo.uploadProfilePicture(file)
       useAuthStore.getState().setSessionUser(updated)
       set({ profile: updated, draft: { ...updated }, saving: false })
@@ -116,7 +111,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   requestUnlock: async () => {
     set({ saving: true })
     try {
-      const repo = useAuthStore.getState().repo
       const updated = await repo.requestProfileUnlock()
       set({ profile: updated, draft: { ...updated }, saving: false })
     } catch (e) {

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useAuth } from './context/AuthContext'
+import { useAuthStore } from './store/useAuthStore'
 import DashboardScreen from './screens/DashboardScreen'
 import HomeScreen from './screens/HomeScreen'
 import { LoadingRegion, Skeleton } from '@/components/modern/Skeleton'
@@ -28,7 +28,8 @@ function Splash() {
 }
 
 function AppContent() {
-  const { status, restoreSession } = useAuth()
+  const status = useAuthStore((state) => state.status)
+  const restoreSession = useAuthStore((state) => state.restoreSession)
 
   useEffect(() => {
     restoreSession()

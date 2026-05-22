@@ -6,7 +6,7 @@ import type {
   PlacementFormSummary,
   StudentSummary,
 } from '@/types'
-import { useAuth } from '../context/AuthContext'
+import { repo } from '../store/useAuthStore'
 import { toast } from 'sonner'
 import { downloadBlob, formatDate } from '../lib/format'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -84,7 +84,6 @@ type AdminData = {
 }
 
 export function AdminPanel() {
-  const { repo } = useAuth()
   const [data, setData] = useState<AdminData | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -160,7 +159,7 @@ export function AdminPanel() {
     } finally {
       setLoading(false)
     }
-  }, [repo])
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

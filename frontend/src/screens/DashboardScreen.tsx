@@ -1,6 +1,6 @@
-/* eslint-disable react-hooks/static-components */
 import { useEffect, useMemo, useState } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuthStore, repo } from '../store/useAuthStore'
+import { useShallow } from 'zustand/react/shallow'
 import { AdminPanel } from '../panels/AdminPanel'
 import { ChatPanel } from '../panels/ChatPanel'
 import { CompaniesPanel } from '../panels/CompaniesPanel'
@@ -34,7 +34,12 @@ function getRequestedPanelId() {
 }
 
 export default function DashboardScreen() {
-  const { session, logout, repo } = useAuth()
+  const { session, logout } = useAuthStore(
+    useShallow((state) => ({
+      session: state.session,
+      logout: state.logout,
+    }))
+  )
   const [selectedIndex, setSelectedIndex] = useState(0)
 
   const panels: Panel[] = useMemo(
@@ -109,7 +114,7 @@ export default function DashboardScreen() {
     if (session) {
       void registerNotificationsSafely(repo)
     }
-  }, [session, repo])
+  }, [session])
 
   if (!session) return null
 

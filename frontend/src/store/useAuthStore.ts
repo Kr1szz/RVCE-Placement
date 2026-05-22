@@ -12,10 +12,6 @@ interface AuthState {
   status: AuthStatus
   session: Session | null
   errorMessage: string | null
-  
-  // Instance helpers
-  client: ApiClient
-  repo: PlacementRepository
 
   // Actions
   restoreSession: () => Promise<void>
@@ -26,8 +22,8 @@ interface AuthState {
 }
 
 // Initialize instances once outside the store
-const client = new ApiClient(API_BASE_URL)
-const repo = new PlacementRepository(client)
+export const client = new ApiClient(API_BASE_URL)
+export const repo = new PlacementRepository(client)
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -35,8 +31,6 @@ export const useAuthStore = create<AuthState>()(
       status: 'checking',
       session: null,
       errorMessage: null,
-      client,
-      repo,
 
       restoreSession: async () => {
         set({ status: 'checking', errorMessage: null })
@@ -92,7 +86,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'rvce-auth-storage',
-      // We only want to persist the session data, not status or instances
+      // We only want to persist the session data, not status
       partialize: (state) => ({ session: state.session }),
       onRehydrateStorage: () => (state) => {
         // Sync token with client on load
@@ -103,11 +97,3 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 )
-
-/** 
- * Backward compatibility hook. 
- * Eventually, components should use useAuthStore directly for better performance.
- */
-export function useAuth() {
-  return useAuthStore()
-}

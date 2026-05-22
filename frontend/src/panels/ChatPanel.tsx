@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChatMessage, ChatUser } from '@/types'
-import { useAuth } from '../context/AuthContext'
+import { useAuthStore, repo } from '../store/useAuthStore'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,7 +12,7 @@ import { Send, Clock, AlertCircle, Paperclip, X, File, Image as ImageIcon, Trash
 import { cn } from '@/lib/utils'
 
 export function ChatPanel() {
-  const { repo, session } = useAuth()
+  const session = useAuthStore((state) => state.session)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -48,7 +48,7 @@ export function ChatPanel() {
         setLoading(false)
       }
     }
-  }, [repo])
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -114,7 +114,7 @@ export function ChatPanel() {
 
   useEffect(() => {
     void repo.getAllUsersForMention().then(setUsers).catch(console.error)
-  }, [repo])
+  }, [])
 
   useEffect(() => {
     if (scrollRef.current) {
