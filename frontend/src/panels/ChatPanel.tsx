@@ -596,9 +596,56 @@ export function ChatPanel() {
                       }
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
                         e.preventDefault()
                         if (text.trim() || attachment) void send()
+                        return
+                      }
+
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.shiftKey)) {
+                        e.preventDefault()
+                        const textarea = e.currentTarget
+                        const start = textarea.selectionStart
+                        const end = textarea.selectionEnd
+                        
+                        const lineStart = text.lastIndexOf('\n', start - 1) + 1
+                        const currentLine = text.slice(lineStart, start)
+                        const match = currentLine.match(/^(\d+)\.\s/)
+                        
+                        let insertStr = '\n'
+                        if (match) {
+                          if (currentLine === match[0]) {
+                             const newText = text.slice(0, lineStart) + text.slice(start)
+                             setText(newText)
+                             setTimeout(() => {
+                               textarea.focus()
+                               textarea.setSelectionRange(lineStart, lineStart)
+                             }, 0)
+                             return
+                          } else {
+                             const nextNum = parseInt(match[1], 10) + 1
+                             insertStr = `\n${nextNum}. `
+                          }
+                        } else if (currentLine.match(/^-\s/)) {
+                          if (currentLine === '- ') {
+                             const newText = text.slice(0, lineStart) + text.slice(start)
+                             setText(newText)
+                             setTimeout(() => {
+                               textarea.focus()
+                               textarea.setSelectionRange(lineStart, lineStart)
+                             }, 0)
+                             return
+                          } else {
+                             insertStr = '\n- '
+                          }
+                        }
+                        
+                        const newText = text.slice(0, start) + insertStr + text.slice(end)
+                        setText(newText)
+                        setTimeout(() => {
+                          textarea.focus()
+                          textarea.setSelectionRange(start + insertStr.length, start + insertStr.length)
+                        }, 0)
                         return
                       }
 
@@ -620,13 +667,27 @@ export function ChatPanel() {
                             newText = text.slice(0, start) + `*${selected}*` + text.slice(end)
                             newCursorPos = selected ? end + 2 : start + 1
                           } else if (key === 'u') {
-                            const lineStart = text.lastIndexOf('\n', start - 1) + 1
-                            newText = text.slice(0, lineStart) + '- ' + text.slice(lineStart)
-                            newCursorPos = start + 2
+                            if (selected) {
+                              const lines = selected.split('\n')
+                              const bulleted = lines.map(l => `- ${l}`).join('\n')
+                              newText = text.slice(0, start) + bulleted + text.slice(end)
+                              newCursorPos = start + bulleted.length
+                            } else {
+                              const lineStart = text.lastIndexOf('\n', start - 1) + 1
+                              newText = text.slice(0, lineStart) + '- ' + text.slice(lineStart)
+                              newCursorPos = start + 2
+                            }
                           } else if (key === 'm') {
-                            const lineStart = text.lastIndexOf('\n', start - 1) + 1
-                            newText = text.slice(0, lineStart) + '1. ' + text.slice(lineStart)
-                            newCursorPos = start + 3
+                            if (selected) {
+                              const lines = selected.split('\n')
+                              const numberedLines = lines.map((line, i) => `${i + 1}. ${line}`).join('\n')
+                              newText = text.slice(0, start) + numberedLines + text.slice(end)
+                              newCursorPos = start + numberedLines.length
+                            } else {
+                              const lineStart = text.lastIndexOf('\n', start - 1) + 1
+                              newText = text.slice(0, lineStart) + '1. ' + text.slice(lineStart)
+                              newCursorPos = start + 3
+                            }
                           }
 
                           setText(newText)
