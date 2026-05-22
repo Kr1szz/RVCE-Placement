@@ -124,22 +124,31 @@ CREATE INDEX IF NOT EXISTS "idx_messages_created_at"  ON "messages" ("created_at
 CREATE INDEX IF NOT EXISTS "idx_mentions_message_id"  ON "mentions" ("message_id");
 CREATE INDEX IF NOT EXISTS "idx_notification_subscriptions_user_id" ON "notification_subscriptions" ("user_id");
 
--- ── Foreign keys ──────────────────────────────────────────────────────────────
+-- ── Column migrations (idempotent — safe to re-run) ────────────────────────────
+-- Adds columns that were introduced after the initial schema was deployed.
 
-ALTER TABLE "spc_accounts" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "companies" ADD FOREIGN KEY ("created_by") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "applications" ADD FOREIGN KEY ("student_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "applications" ADD FOREIGN KEY ("company_id") REFERENCES "companies" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "forms" ADD FOREIGN KEY ("company_id") REFERENCES "companies" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "forms" ADD FOREIGN KEY ("created_by") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "form_question_map" ADD FOREIGN KEY ("form_id") REFERENCES "forms" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "form_question_map" ADD FOREIGN KEY ("question_id") REFERENCES "form_questions" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "form_responses" ADD FOREIGN KEY ("form_id") REFERENCES "forms" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "form_responses" ADD FOREIGN KEY ("student_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "form_responses" ADD FOREIGN KEY ("company_id") REFERENCES "companies" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "form_responses" ADD FOREIGN KEY ("question_id") REFERENCES "form_questions" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "messages" ADD FOREIGN KEY ("sender_id") REFERENCES "users" ("id") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "messages" ADD CONSTRAINT "fk_messages_parent_id" FOREIGN KEY ("parent_id") REFERENCES "messages" ("id") ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "mentions" ADD FOREIGN KEY ("message_id") REFERENCES "messages" ("id") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "mentions" ADD FOREIGN KEY ("mentioned_user_id") REFERENCES "users" ("id") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
-ALTER TABLE "notification_subscriptions" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "consent_blocked" boolean DEFAULT false;
+ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "tracker_blocked" boolean DEFAULT false;
+ALTER TABLE "forms" ADD COLUMN IF NOT EXISTS "accepting_responses" boolean DEFAULT true;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "unlock_requested" boolean DEFAULT false;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "profile_picture_url" text;
+
+-- ── Foreign keys (idempotent — safe to re-run on existing DB) ─────────────────
+
+DO $$ BEGIN ALTER TABLE "spc_accounts" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "companies" ADD FOREIGN KEY ("created_by") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "applications" ADD FOREIGN KEY ("student_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "applications" ADD FOREIGN KEY ("company_id") REFERENCES "companies" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "forms" ADD FOREIGN KEY ("company_id") REFERENCES "companies" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "forms" ADD FOREIGN KEY ("created_by") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "form_question_map" ADD FOREIGN KEY ("form_id") REFERENCES "forms" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "form_question_map" ADD FOREIGN KEY ("question_id") REFERENCES "form_questions" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "form_responses" ADD FOREIGN KEY ("form_id") REFERENCES "forms" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "form_responses" ADD FOREIGN KEY ("student_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "form_responses" ADD FOREIGN KEY ("company_id") REFERENCES "companies" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "form_responses" ADD FOREIGN KEY ("question_id") REFERENCES "form_questions" ("id") DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "messages" ADD FOREIGN KEY ("sender_id") REFERENCES "users" ("id") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "messages" ADD CONSTRAINT "fk_messages_parent_id" FOREIGN KEY ("parent_id") REFERENCES "messages" ("id") ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "mentions" ADD FOREIGN KEY ("message_id") REFERENCES "messages" ("id") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "mentions" ADD FOREIGN KEY ("mentioned_user_id") REFERENCES "users" ("id") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "notification_subscriptions" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
