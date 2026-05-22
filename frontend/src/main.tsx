@@ -8,8 +8,39 @@ import { Toaster } from '@/components/ui/sonner'
 import { GOOGLE_CLIENT_ID } from './config.ts'
 import './index.css'
 import { registerSW } from 'virtual:pwa-register'
+import { toast } from 'sonner'
 
 registerSW({ immediate: true })
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const data = event.data
+    if (data?.type === 'OFFLINE_SYNC_COMPLETE') {
+      toast.success('Sync complete! Your offline changes have been synchronized.')
+      window.dispatchEvent(new CustomEvent('offline-sync-complete', { detail: data }))
+    }
+  })
+
+  navigator.serviceWorker.ready.then(async (registration) => {
+    if ('periodicSync' in registration) {
+      try {
+        const status = await (navigator as any).permissions.query({
+          name: 'periodic-background-sync',
+        })
+        if (status.state === 'granted') {
+          await (registration as any).periodicSync.register('periodic-portal-update', {
+            minInterval: 6 * 60 * 60 * 1000,
+          })
+          console.log('Periodic sync registered successfully')
+        } else {
+          console.warn('Periodic background sync permission not granted.')
+        }
+      } catch (err) {
+        console.warn('Periodic background sync registration failed:', err)
+      }
+    }
+  })
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

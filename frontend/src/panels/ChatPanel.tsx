@@ -87,6 +87,20 @@ export function ChatPanel() {
     }
   }, [load])
 
+  // Listen for background sync completion to refresh chat messages
+  useEffect(() => {
+    const handleSyncComplete = (event: Event) => {
+      const customEvent = event as CustomEvent<{ url?: string }>
+      if (customEvent.detail?.url?.startsWith('/messages')) {
+        void load(true) // Refresh chat message list silently
+      }
+    }
+    window.addEventListener('offline-sync-complete', handleSyncComplete)
+    return () => {
+      window.removeEventListener('offline-sync-complete', handleSyncComplete)
+    }
+  }, [load])
+
   // Periodic fallback background polling to sync messages when active
   useEffect(() => {
     const timer = setInterval(() => {
